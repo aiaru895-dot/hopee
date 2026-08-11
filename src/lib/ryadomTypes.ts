@@ -1,6 +1,8 @@
 export type Role = 'elder' | 'volunteer';
 export type VolunteerStatus = 'offline' | 'online' | 'searching' | 'busy' | 'blocked';
 export type HelpCategory = 'phone' | 'messengers' | 'internet' | 'settings' | 'apps' | 'payments' | 'talk' | 'any';
+export type HelpSessionStatus = 'waiting' | 'matched' | 'active' | 'completed' | 'cancelled' | 'reported';
+export type MessageType = 'text' | 'voice' | 'photo' | 'video' | 'system';
 
 export type User = {
   id: string;
@@ -24,9 +26,11 @@ export type VolunteerProfile = {
   xp: number;
   level: number;
   title: string;
-  successfulCalls: number;
+  successfulHelpCount: number;
   peopleHelped: number;
   thanksReceived: number;
+  trustScore: number;
+  riskScore: number;
   online: boolean;
   busy: boolean;
 };
@@ -42,14 +46,23 @@ export type MatchRequest = {
   matchedVolunteerId?: string;
 };
 
-export type CallSession = {
+export type HelpSession = {
   id: string;
+  helpRequestId: string;
   elderUserId: string;
   volunteerId: string;
+  status: HelpSessionStatus;
   startedAt: string;
   endedAt?: string;
-  screenShareEnabled: boolean;
-  status: 'active' | 'ended';
+};
+
+export type ChatMessage = {
+  id: string;
+  sessionId: string;
+  senderId: string;
+  messageType: MessageType;
+  text: string;
+  createdAt: string;
 };
 
 export type Achievement = {

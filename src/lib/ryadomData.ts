@@ -2,13 +2,13 @@ import type { Achievement, HelpCategory, User, Volunteer } from './ryadomTypes';
 
 export const helpCategories: Array<{ id: HelpCategory; label: string; icon: string }> = [
   { id: 'phone', label: 'Телефон', icon: '📱' },
-  { id: 'messengers', label: 'Мессенджеры', icon: '💬' },
+  { id: 'messengers', label: 'Сообщения', icon: '💬' },
   { id: 'internet', label: 'Интернет', icon: '🌐' },
   { id: 'settings', label: 'Настройки', icon: '⚙️' },
   { id: 'apps', label: 'Приложения', icon: '📲' },
   { id: 'payments', label: 'Онлайн-платежи', icon: '💳' },
-  { id: 'talk', label: 'Просто поговорить', icon: '💬' },
-  { id: 'any', label: 'Найдите любого помощника', icon: '🎲' },
+  { id: 'talk', label: 'Просто поговорить', icon: '❤️' },
+  { id: 'any', label: 'Любой помощник', icon: '🎡' },
 ];
 
 export const elders: User[] = [
@@ -21,14 +21,19 @@ export const achievements: Achievement[] = [
   { id: 'tech', icon: '📱', name: 'Технарь', description: 'Помог 10 людям с телефоном.', requirement: 10 },
   { id: 'friend', icon: '💬', name: 'Друг на связи', description: 'Провел 10 добрых разговоров.', requirement: 10 },
   { id: 'care', icon: '🧓', name: 'Заботливый помощник', description: 'Помог 50 пожилым людям.', requirement: 50 },
-  { id: 'safe', icon: '🛡️', name: 'Безопасный помощник', description: '100 звонков без жалоб.', requirement: 100 },
+  { id: 'safe', icon: '🛡️', name: 'Безопасный помощник', description: '100 сессий без жалоб.', requirement: 100 },
 ];
 
 export const volunteers: Volunteer[] = [
-  volunteer('vol-1', 'Алия', 24, 'Алматы', 'А', ['phone', 'messengers', 'settings'], 4.9, 870, 8, 24),
-  volunteer('vol-2', 'Данияр', 21, 'Астана', 'Д', ['internet', 'apps', 'talk'], 4.8, 420, 5, 12),
-  volunteer('vol-3', 'Мария', 27, 'Караганда', 'М', ['phone', 'payments', 'messengers'], 5, 1160, 11, 51),
-  volunteer('vol-4', 'Максим', 22, 'Павлодар', 'М', ['settings', 'apps', 'internet'], 4.7, 260, 3, 7),
+  volunteer('vol-1', 'Алия', 24, 'Алматы', 'А', ['phone', 'messengers', 'settings'], 4.9, 870, 4, 43),
+  volunteer('vol-2', 'Данияр', 21, 'Астана', 'Д', ['internet', 'apps', 'talk'], 4.8, 420, 3, 18),
+  volunteer('vol-3', 'Мария', 27, 'Караганда', 'М', ['phone', 'payments', 'messengers'], 5, 1160, 6, 51),
+  volunteer('vol-4', 'Максим', 22, 'Павлодар', 'М', ['settings', 'apps', 'internet'], 4.7, 260, 2, 12),
+];
+
+export const starterMessages = [
+  'Здравствуйте! Я рядом и помогу спокойно.',
+  'Не сообщайте пароли, SMS-коды или PIN. Это важное правило.',
 ];
 
 function user(id: string, role: User['role'], name: string, age: number, city: string, avatar: string): User {
@@ -55,13 +60,15 @@ function volunteer(
       verified: true,
       skills,
       rating,
-      ratingCount: helped + 3,
+      ratingCount: helped + 5,
       xp,
       level,
-      title: level > 7 ? 'Надежный помощник' : 'Добрый помощник',
-      successfulCalls: helped,
+      title: level >= 4 ? 'Надежный помощник' : 'Добрый помощник',
+      successfulHelpCount: helped,
       peopleHelped: helped,
-      thanksReceived: Math.max(2, helped - 3),
+      thanksReceived: Math.max(4, helped - 12),
+      trustScore: 92 + Math.min(level, 7),
+      riskScore: Math.max(1, 8 - level),
       online: true,
       busy: false,
     },

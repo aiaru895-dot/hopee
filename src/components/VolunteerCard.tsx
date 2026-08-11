@@ -12,9 +12,10 @@ export function VolunteerCard({ volunteer }: { volunteer: Volunteer }) {
     <article className="volunteer-card">
       <Avatar value={volunteer.avatar} />
       <div>
-        <h2>{volunteer.name}, {volunteer.age}</h2>
-        <p>{volunteer.city}</p>
-        <p>⭐ {volunteer.profile.rating} · {volunteer.profile.title}</p>
+        <h2>{volunteer.name}</h2>
+        <p>🟢 Сейчас онлайн</p>
+        <p>⭐ {volunteer.profile.rating} · помогла {volunteer.profile.peopleHelped} людям</p>
+        <p>🌟 {volunteer.profile.title}</p>
         <p>{labels}</p>
       </div>
     </article>

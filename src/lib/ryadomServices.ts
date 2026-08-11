@@ -1,5 +1,5 @@
-import { achievements, volunteers } from './ryadomData';
-import type { CallSession, HelpCategory, MatchRequest, User, Volunteer } from './ryadomTypes';
+import { achievements, starterMessages, volunteers } from './ryadomData';
+import type { ChatMessage, HelpCategory, HelpSession, MatchRequest, User, Volunteer } from './ryadomTypes';
 
 let liveVolunteers = volunteers.map((volunteer) => structuredClone(volunteer));
 
@@ -12,7 +12,7 @@ export function registerUser(role: User['role'], name: string, age: number, city
     city,
     avatar: name.slice(0, 1).toUpperCase(),
     createdAt: new Date().toISOString(),
-    status: role === 'volunteer' ? 'offline' : 'offline',
+    status: 'offline',
   };
 }
 
@@ -28,26 +28,33 @@ export function findRandomVolunteer(category: HelpCategory): Volunteer | undefin
   return available[Math.floor(Math.random() * available.length)];
 }
 
-export function acceptHelpRequest(request: MatchRequest, volunteer: Volunteer): MatchRequest {
+export function createHelpSession(request: MatchRequest, volunteer: Volunteer): HelpSession {
   setVolunteerBusy(volunteer.id, true);
-  return { ...request, status: 'accepted', matchedVolunteerId: volunteer.id };
-}
-
-export function startCall(elderUserId: string, volunteerId: string): CallSession {
-  setVolunteerBusy(volunteerId, true);
   return {
     id: crypto.randomUUID(),
-    elderUserId,
-    volunteerId,
+    helpRequestId: request.id,
+    elderUserId: request.elderUserId,
+    volunteerId: volunteer.id,
     startedAt: new Date().toISOString(),
-    screenShareEnabled: false,
     status: 'active',
   };
 }
 
-export function endCall(call: CallSession): CallSession {
-  setVolunteerBusy(call.volunteerId, false);
-  return { ...call, endedAt: new Date().toISOString(), screenShareEnabled: false, status: 'ended' };
+export function finishHelpSession(session: HelpSession): HelpSession {
+  setVolunteerBusy(session.volunteerId, false);
+  return { ...session, endedAt: new Date().toISOString(), status: 'completed' };
+}
+
+export function createStarterMessages(sessionId: string, volunteerId: string): ChatMessage[] {
+  return starterMessages.map((text) => createMessage(sessionId, volunteerId, 'system', text));
+}
+
+export function createMessage(sessionId: string, senderId: string, messageType: ChatMessage['messageType'], text: string): ChatMessage {
+  return { id: crypto.randomUUID(), sessionId, senderId, messageType, text, createdAt: new Date().toISOString() };
+}
+
+export function hasSafetyRisk(text: string): boolean {
+  return /парол|sms|смс|pin|пин|код|банк|карт/i.test(text);
 }
 
 export function addXP(volunteer: Volunteer, points: number): Volunteer {
@@ -57,7 +64,7 @@ export function addXP(volunteer: Volunteer, points: number): Volunteer {
 }
 
 export function calculateLevel(xp: number): number {
-  return Math.max(1, Math.floor(xp / 120) + 1);
+  return Math.max(1, Math.floor(xp / 200) + 1);
 }
 
 export function checkAchievements(volunteer: Volunteer) {

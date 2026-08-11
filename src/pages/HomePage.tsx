@@ -1,23 +1,46 @@
 import { useMemo, useState } from 'react';
-import { ActionButton, Avatar, PhoneShell, ScreenHeader, StatusPill, TileButton } from '../components/RyadomUi';
+import { ActionButton, PhoneShell, ScreenHeader, StatusPill, TileButton } from '../components/RyadomUi';
 import { VolunteerCard } from '../components/VolunteerCard';
 import { achievements, elders, helpCategories } from '../lib/ryadomData';
-import { addXP, createHelpRequest, endCall, findRandomVolunteer, registerUser, resetMockBackend, startCall } from '../lib/ryadomServices';
-import { ScreenShareService } from '../lib/screenShareService';
-import type { Achievement, CallSession, HelpCategory, Role, User, Volunteer } from '../lib/ryadomTypes';
+import {
+  addXP,
+  createHelpRequest,
+  createHelpSession,
+  createMessage,
+  createStarterMessages,
+  findRandomVolunteer,
+  finishHelpSession,
+  hasSafetyRisk,
+  registerUser,
+  resetMockBackend,
+} from '../lib/ryadomServices';
+import type { Achievement, ChatMessage, HelpCategory, HelpSession, Role, User, Volunteer } from '../lib/ryadomTypes';
 
-type Step = 'splash' | 'role' | 'elderHome' | 'category' | 'search' | 'found' | 'call' | 'rating' | 'contacts' | 'safety' | 'volunteerJoin' | 'volunteerHome' | 'incoming' | 'volunteerProfile' | 'admin';
-
-const screenShare = new ScreenShareService();
+type Step =
+  | 'role'
+  | 'elderHome'
+  | 'category'
+  | 'roulette'
+  | 'found'
+  | 'chat'
+  | 'rating'
+  | 'contacts'
+  | 'safety'
+  | 'volunteerJoin'
+  | 'volunteerHome'
+  | 'incoming'
+  | 'volunteerProfile'
+  | 'admin';
 
 export function HomePage() {
-  const [step, setStep] = useState<Step>('splash');
+  const [step, setStep] = useState<Step>('role');
   const [role, setRole] = useState<Role>('elder');
   const [currentUser, setCurrentUser] = useState<User>(elders[0]);
   const [volunteer, setVolunteer] = useState<Volunteer>();
   const [category, setCategory] = useState<HelpCategory>('any');
-  const [call, setCall] = useState<CallSession>();
-  const [sharing, setSharing] = useState(false);
+  const [session, setSession] = useState<HelpSession>();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [draft, setDraft] = useState('');
   const [rating, setRating] = useState(0);
   const visibleAchievements = useMemo(() => achievements.slice(0, 3), []);
 
@@ -26,66 +49,76 @@ export function HomePage() {
     setStep(nextRole === 'elder' ? 'elderHome' : 'volunteerJoin');
   };
 
-  const searchVolunteer = (help: HelpCategory) => {
+  const startRoulette = (help: HelpCategory) => {
     setCategory(help);
-    setStep('search');
-    createHelpRequest(currentUser.id, help);
+    setStep('roulette');
+    const request = createHelpRequest(currentUser.id, help);
     window.setTimeout(() => {
-      const matched = findRandomVolunteer(help);
+      const matched = findRandomVolunteer(help) ?? findRandomVolunteer('any');
+      if (!matched) {
+        setStep('category');
+        return;
+      }
+      const nextSession = createHelpSession(request, matched);
       setVolunteer(matched);
-      setStep(matched ? 'found' : 'category');
-    }, 900);
+      setSession(nextSession);
+      setMessages(createStarterMessages(nextSession.id, matched.id));
+      setStep('found');
+    }, 2400);
   };
 
-  const beginCall = () => {
-    if (!volunteer) return;
-    setCall(startCall(currentUser.id, volunteer.id));
-    setStep('call');
+  const openChat = () => {
+    if (!session) return;
+    setStep('chat');
   };
 
-  const finishCall = () => {
-    if (call) setCall(endCall(call));
-    setSharing(false);
+  const sendText = () => {
+    if (!session || !draft.trim()) return;
+    const nextMessage = createMessage(session.id, currentUser.id, 'text', draft.trim());
+    setMessages((items) => [...items, nextMessage]);
+    setDraft('');
+  };
+
+  const sendQuickMedia = (type: ChatMessage['messageType']) => {
+    if (!session) return;
+    const textByType = {
+      text: '',
+      system: '',
+      voice: 'Голосовое сообщение, 12 секунд',
+      photo: 'Фото отправлено',
+      video: 'Короткое видео отправлено',
+    };
+    setMessages((items) => [...items, createMessage(session.id, currentUser.id, type, textByType[type])]);
+  };
+
+  const completeHelp = () => {
+    if (session) finishHelpSession(session);
     setStep('rating');
   };
 
   const completeVolunteerJoin = () => {
-    const user = registerUser('volunteer', 'Новый помощник', 20, 'Алматы');
-    setCurrentUser(user);
+    setCurrentUser(registerUser('volunteer', 'Новый помощник', 20, 'Алматы'));
     setVolunteer(undefined);
     setStep('volunteerHome');
   };
 
   const acceptIncomingRequest = () => {
     const matched = findRandomVolunteer('talk') ?? findRandomVolunteer('any');
-    if (!matched) {
-      setStep('volunteerHome');
-      return;
-    }
+    if (!matched) return;
+    const request = createHelpRequest(elders[0].id, 'talk');
+    const nextSession = createHelpSession(request, matched);
     setVolunteer(matched);
-    setCall(startCall(currentUser.id, matched.id));
-    setStep('call');
+    setSession(nextSession);
+    setMessages(createStarterMessages(nextSession.id, currentUser.id));
+    setStep('chat');
   };
-
-  if (step === 'splash') {
-    return (
-      <PhoneShell>
-        <section className="splash">
-          <div className="brand-mark">Р</div>
-          <h1>Рядом</h1>
-          <p>Помощь с телефоном от доброго человека.</p>
-          <ActionButton onClick={() => setStep('role')}>Начать</ActionButton>
-        </section>
-      </PhoneShell>
-    );
-  }
 
   if (step === 'role') {
     return (
       <PhoneShell>
-        <ScreenHeader title="Добрый день" subtitle="Кто вы?" />
+        <ScreenHeader title="Добрый день ❤️" subtitle="Кто вы?" />
         <div className="stack">
-          <ActionButton onClick={() => chooseRole('elder')}>👵 Мне нужна помощь</ActionButton>
+          <ActionButton onClick={() => chooseRole('elder')}>👵 Я хочу получить помощь</ActionButton>
           <ActionButton tone="calm" onClick={() => chooseRole('volunteer')}>🤝 Я хочу помогать</ActionButton>
         </div>
       </PhoneShell>
@@ -95,12 +128,18 @@ export function HomePage() {
   if (step === 'elderHome') {
     return (
       <PhoneShell>
-        <ScreenHeader title="Здравствуйте!" subtitle="Нужна помощь с телефоном?" />
-        <ActionButton onClick={() => setStep('category')}>🆘 Найти помощника</ActionButton>
-        <div className="grid">
-          <TileButton icon="☎️" label="Мои контакты" onClick={() => setStep('contacts')} />
-          <TileButton icon="🛡️" label="Безопасность" onClick={() => setStep('safety')} />
-          <TileButton icon="⚙️" label="Настройки" onClick={() => setStep('safety')} />
+        <ScreenHeader title="Добрый день ❤️" subtitle="Нужна помощь?" />
+        <section className="roulette-card" aria-label="Рулетка помощи">
+          <button className="roulette-button" onClick={() => startRoulette('any')}>
+            <span>🎡</span>
+            <strong>НАЙТИ<br />ПОМОЩНИКА</strong>
+          </button>
+          <p>Нажмите, и мы найдем человека, который сейчас готов вам помочь.</p>
+        </section>
+        <div className="bottom-nav">
+          <button>🏠 Помощь</button>
+          <button onClick={() => setStep('contacts')}>❤️ Близкие</button>
+          <button onClick={() => setStep('safety')}>⚙️ Настройки</button>
         </div>
       </PhoneShell>
     );
@@ -109,22 +148,25 @@ export function HomePage() {
   if (step === 'category') {
     return (
       <PhoneShell>
-        <ScreenHeader title="С чем помочь?" subtitle="Можно выбрать тему или найти любого помощника." />
+        <ScreenHeader title="С чем помочь?" subtitle="Можно не выбирать. По умолчанию найдем любого помощника." />
+        <ActionButton onClick={() => startRoulette('any')}>🎡 Найти любого помощника</ActionButton>
         <div className="grid">
-          {helpCategories.map((item) => <TileButton key={item.id} icon={item.icon} label={item.label} onClick={() => searchVolunteer(item.id)} />)}
+          {helpCategories.filter((item) => item.id !== 'any').map((item) => (
+            <TileButton key={item.id} icon={item.icon} label={item.label} onClick={() => startRoulette(item.id)} />
+          ))}
         </div>
         <ActionButton tone="ghost" onClick={() => setStep('elderHome')}>Назад</ActionButton>
       </PhoneShell>
     );
   }
 
-  if (step === 'search') {
+  if (step === 'roulette') {
     return (
       <PhoneShell>
         <section className="center-screen">
-          <div className="loader" />
-          <h1>Ищем помощника</h1>
-          <p>Подбираем проверенного свободного волонтера.</p>
+          <div className="roulette-wheel">🎡</div>
+          <h1>Ищем помощника...</h1>
+          <p>Система выбирает случайного проверенного волонтера.</p>
         </section>
       </PhoneShell>
     );
@@ -133,27 +175,39 @@ export function HomePage() {
   if (step === 'found' && volunteer) {
     return (
       <PhoneShell>
-        <ScreenHeader title="Помощник найден" subtitle={`Тема: ${helpCategories.find((item) => item.id === category)?.label}`} />
+        <ScreenHeader title="Помощник найден ❤️" subtitle={`Тема: ${helpCategories.find((item) => item.id === category)?.label}`} />
         <VolunteerCard volunteer={volunteer} />
-        <ActionButton onClick={beginCall}>📞 Начать звонок</ActionButton>
-        <ActionButton tone="ghost" onClick={() => setStep('category')}>Искать другого</ActionButton>
+        <ActionButton onClick={openChat}>💬 Начать помощь</ActionButton>
+        <ActionButton tone="ghost" onClick={() => startRoulette(category)}>Попробовать снова</ActionButton>
       </PhoneShell>
     );
   }
 
-  if (step === 'call' && volunteer) {
+  if (step === 'chat' && volunteer) {
+    const risk = messages.some((message) => hasSafetyRisk(message.text));
     return (
       <PhoneShell>
-        <section className="call-screen">
-          <Avatar value={volunteer.avatar} />
-          <h1>{volunteer.name} на связи</h1>
-          <StatusPill>{sharing ? 'Экран показывается' : 'Звонок идет'}</StatusPill>
-          <div className="mock-phone">{sharing ? 'Mock-показ экрана телефона' : 'Видео и аудио mock'}</div>
-          <ActionButton tone="calm" onClick={() => { const state = sharing ? screenShare.stopScreenShare() : screenShare.startScreenShare(); setSharing(state.enabled); }}>
-            {sharing ? '🔒 Остановить показ экрана' : '📱 Показать мой экран'}
-          </ActionButton>
-          <ActionButton tone="danger" onClick={finishCall}>Завершить звонок</ActionButton>
-        </section>
+        <ScreenHeader title={volunteer.name} subtitle="Онлайн-чат помощи" />
+        <StatusPill>🟢 Помощь идет</StatusPill>
+        {risk ? <div className="warning">⚠️ Никогда не сообщайте пароль, SMS-код или PIN.</div> : null}
+        <div className="chat-list">
+          {messages.map((message) => (
+            <div key={message.id} className={message.senderId === currentUser.id ? 'message message--mine' : 'message'}>
+              <span>{message.messageType === 'voice' ? '🎙️' : message.messageType === 'photo' ? '🖼️' : message.messageType === 'video' ? '📹' : '💬'}</span>
+              <p>{message.text}</p>
+            </div>
+          ))}
+        </div>
+        <div className="chat-tools">
+          <button onClick={() => sendQuickMedia('voice')}>🎙️</button>
+          <button onClick={() => sendQuickMedia('photo')}>🖼️</button>
+          <button onClick={() => sendQuickMedia('video')}>📹</button>
+        </div>
+        <div className="chat-input">
+          <input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Написать..." />
+          <button onClick={sendText}>Отправить</button>
+        </div>
+        <ActionButton tone="danger" onClick={completeHelp}>Закончить помощь</ActionButton>
       </PhoneShell>
     );
   }
@@ -161,7 +215,7 @@ export function HomePage() {
   if (step === 'rating') {
     return (
       <PhoneShell>
-        <ScreenHeader title="Спасибо!" subtitle="Оцените помощь." />
+        <ScreenHeader title="Спасибо ❤️" subtitle="Оцените помощника." />
         <div className="stars">{[1, 2, 3, 4, 5].map((star) => <button key={star} onClick={() => setRating(star)}>{star <= rating ? '★' : '☆'}</button>)}</div>
         <ActionButton onClick={() => { resetMockBackend(); setStep(role === 'elder' ? 'elderHome' : 'volunteerHome'); }}>Готово</ActionButton>
         <ActionButton tone="ghost" onClick={() => setStep('safety')}>Пожаловаться</ActionButton>
@@ -172,13 +226,13 @@ export function HomePage() {
   if (step === 'volunteerJoin') {
     return (
       <PhoneShell>
-        <ScreenHeader title="Регистрация" subtitle="Заполните профиль помощника." />
+        <ScreenHeader title="Регистрация" subtitle="Email и пароль подключаются через Supabase Auth." />
         <div className="form-card">
+          <input placeholder="Email" defaultValue="aliya@example.com" />
+          <input placeholder="Пароль" type="password" defaultValue="password" />
           <input placeholder="Имя" defaultValue="Алия" />
-          <input placeholder="Возраст" defaultValue="24" />
-          <input placeholder="Email или телефон" defaultValue="aliya@example.com" />
           <input placeholder="Город" defaultValue="Алматы" />
-          <p>Навыки: смартфоны, мессенджеры, настройки.</p>
+          <p>После регистрации профиль попадает на mock-проверку.</p>
         </div>
         <ActionButton onClick={completeVolunteerJoin}>Пройти mock-проверку</ActionButton>
       </PhoneShell>
@@ -186,16 +240,24 @@ export function HomePage() {
   }
 
   if (step === 'volunteerHome') {
-    const xpVolunteer = addXP(volunteer ?? findRandomVolunteer('any')!, 35);
+    const baseVolunteer = volunteer ?? findRandomVolunteer('any');
+    const xpVolunteer = baseVolunteer ? addXP(baseVolunteer, 35) : undefined;
     return (
       <PhoneShell>
-        <ScreenHeader title="Вы проверенный волонтер" subtitle="Можно принимать случайные запросы." />
-        <StatusPill>🟢 Вы готовы помогать</StatusPill>
-        <div className="stats"><b>{xpVolunteer.profile.xp} XP</b><b>Уровень {xpVolunteer.profile.level}</b><b>{xpVolunteer.profile.peopleHelped} помог</b></div>
-        <ActionButton onClick={() => setStep('incoming')}>🎲 Найти человека</ActionButton>
-        <div className="grid">
-          <TileButton icon="🏆" label="Достижения" onClick={() => setStep('volunteerProfile')} />
-          <TileButton icon="🛠️" label="Mock admin" onClick={() => setStep('admin')} />
+        <ScreenHeader title="Готовы помогать?" subtitle="Когда вы онлайн, рулетка может выбрать вас." />
+        <StatusPill>🟢 Готов помогать</StatusPill>
+        {xpVolunteer ? (
+          <div className="stats">
+            <b>{xpVolunteer.profile.xp} XP</b>
+            <b>LVL {xpVolunteer.profile.level}</b>
+            <b>{xpVolunteer.profile.peopleHelped} помощи</b>
+          </div>
+        ) : null}
+        <ActionButton onClick={() => setStep('incoming')}>Показать запрос</ActionButton>
+        <div className="bottom-nav">
+          <button>🏠 Помощь</button>
+          <button onClick={() => setStep('volunteerProfile')}>🏆 Прогресс</button>
+          <button onClick={() => setStep('admin')}>👤 Профиль</button>
         </div>
       </PhoneShell>
     );
@@ -204,9 +266,9 @@ export function HomePage() {
   if (step === 'incoming') {
     return (
       <PhoneShell>
-        <ScreenHeader title="Входящий запрос" subtitle="Пользователь хочет помощь: просто поговорить." />
+        <ScreenHeader title="Нужна ваша помощь ❤️" subtitle="Пользователь хочет просто поговорить." />
         <ActionButton onClick={acceptIncomingRequest}>Принять</ActionButton>
-        <ActionButton tone="ghost" onClick={() => setStep('volunteerHome')}>Пропустить</ActionButton>
+        <ActionButton tone="ghost" onClick={() => setStep('volunteerHome')}>Не могу сейчас</ActionButton>
       </PhoneShell>
     );
   }
@@ -219,14 +281,14 @@ export function HomePage() {
 }
 
 function InfoScreen({ step, achievements, onBack }: { step: Step; achievements: Achievement[]; onBack: () => void }) {
-  const title = step === 'contacts' ? 'Мои контакты' : step === 'admin' ? 'Mock admin' : step === 'volunteerProfile' ? 'Профиль' : 'Безопасность';
+  const title = step === 'contacts' ? 'Мои близкие' : step === 'admin' ? 'Mock admin' : step === 'volunteerProfile' ? 'Мой прогресс' : 'Безопасность';
   return (
     <PhoneShell>
       <ScreenHeader title={title} />
       <div className="info-list">
-        {step === 'contacts' ? <p>Дочь, сын, внук, сосед. В MVP контакты сохранены как mock.</p> : null}
-        {step === 'safety' ? <p>Никому не сообщайте пароль, SMS-код или PIN. Помощник никогда не просит эти данные.</p> : null}
-        {step === 'admin' ? <p>Mock-модерация: жалобы, блокировки и проверки отмечаются локально, без production backend.</p> : null}
+        {step === 'contacts' ? <p>Дочь, сын, внук. Волонтеры не видят эти контакты.</p> : null}
+        {step === 'safety' ? <p>Никому не сообщайте пароль, SMS-код, PIN или банковские данные.</p> : null}
+        {step === 'admin' ? <p>Mock-модерация: жалобы, блокировки, trust score и risk score готовы как интерфейсные состояния.</p> : null}
         {step === 'volunteerProfile' ? achievements.map((item) => <p key={item.id}>{item.icon} <b>{item.name}</b><br />{item.description}</p>) : null}
       </div>
       <ActionButton onClick={onBack}>Назад</ActionButton>
