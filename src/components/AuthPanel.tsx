@@ -43,13 +43,12 @@ export function AuthPanel() {
   return (
     <PhoneShell>
       <section className="login-hero">
-        <div className="heart-badge">❤️</div>
-        <h1>Рядом</h1>
-        <p>Войдите, и ваша помощь сохранится.</p>
-        <div className="elder-people" aria-label="Пожилые люди улыбаются">
-          <AnimatedElder icon="👵" name="Валентина" />
-          <AnimatedElder icon="👴" name="Николай" />
+        <div className="brand-symbol" aria-hidden="true">
+          <span />
         </div>
+        <p className="eyebrow">Сервис поддержки</p>
+        <h1>Рядом</h1>
+        <p>Безопасная помощь с телефоном и повседневными цифровыми вопросами.</p>
       </section>
 
       <ActionButton onClick={handleGoogle} disabled={busy}>Войти через Google</ActionButton>
@@ -66,15 +65,5 @@ export function AuthPanel() {
         {mode === 'signin' ? 'Создать аккаунт' : 'Уже есть аккаунт'}
       </ActionButton>
     </PhoneShell>
-  );
-}
-
-function AnimatedElder({ icon, name }: { icon: string; name: string }) {
-  return (
-    <article className="elder-card">
-      <span>{icon}</span>
-      <strong>{name}</strong>
-      <small>ждет помощи</small>
-    </article>
   );
 }

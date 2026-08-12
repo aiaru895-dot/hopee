@@ -1,14 +1,14 @@
 import type { Achievement, HelpCategory, User, Volunteer } from './ryadomTypes';
 
 export const helpCategories: Array<{ id: HelpCategory; label: string; icon: string }> = [
-  { id: 'phone', label: 'Телефон', icon: '📱' },
-  { id: 'messengers', label: 'Сообщения', icon: '💬' },
-  { id: 'internet', label: 'Интернет', icon: '🌐' },
-  { id: 'settings', label: 'Настройки', icon: '⚙️' },
-  { id: 'apps', label: 'Приложения', icon: '📲' },
-  { id: 'payments', label: 'Онлайн-платежи', icon: '💳' },
-  { id: 'talk', label: 'Просто поговорить', icon: '❤️' },
-  { id: 'any', label: 'Любой помощник', icon: '🎡' },
+  { id: 'phone', label: 'Телефон', icon: '' },
+  { id: 'messengers', label: 'Сообщения', icon: '' },
+  { id: 'internet', label: 'Интернет', icon: '' },
+  { id: 'settings', label: 'Настройки', icon: '' },
+  { id: 'apps', label: 'Приложения', icon: '' },
+  { id: 'payments', label: 'Онлайн-платежи', icon: '' },
+  { id: 'talk', label: 'Разговор', icon: '' },
+  { id: 'any', label: 'Любой помощник', icon: '' },
 ];
 
 export const elders: User[] = [
@@ -18,10 +18,10 @@ export const elders: User[] = [
 ];
 
 export const achievements: Achievement[] = [
-  { id: 'tech', icon: '📱', name: 'Технарь', description: 'Помог 10 людям с телефоном.', requirement: 10 },
-  { id: 'friend', icon: '💬', name: 'Друг на связи', description: 'Провел 10 добрых разговоров.', requirement: 10 },
-  { id: 'care', icon: '🧓', name: 'Заботливый помощник', description: 'Помог 50 пожилым людям.', requirement: 50 },
-  { id: 'safe', icon: '🛡️', name: 'Безопасный помощник', description: '100 сессий без жалоб.', requirement: 100 },
+  { id: 'tech', icon: '', name: 'Помог 10 людям', description: 'Получено', requirement: 10 },
+  { id: 'friend', icon: '', name: '10 успешных разговоров', description: 'Получено', requirement: 10 },
+  { id: 'care', icon: '', name: '50 успешных помощей', description: 'В процессе', requirement: 50 },
+  { id: 'safe', icon: '', name: '100 безопасных сессий', description: 'В процессе', requirement: 100 },
 ];
 
 export const volunteers: Volunteer[] = [
@@ -32,8 +32,8 @@ export const volunteers: Volunteer[] = [
 ];
 
 export const starterMessages = [
-  'Здравствуйте! Я рядом и помогу спокойно.',
-  'Не сообщайте пароли, SMS-коды или PIN. Это важное правило.',
+  'Здравствуйте. Я рядом и помогу спокойно.',
+  'Не сообщайте пароли, SMS-коды, PIN или банковские данные.',
 ];
 
 function user(id: string, role: User['role'], name: string, age: number, city: string, avatar: string): User {

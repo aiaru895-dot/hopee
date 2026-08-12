@@ -36,7 +36,7 @@ export function ActionButton({ children, onClick, tone = 'primary', disabled }: 
 export function TileButton({ icon, label, onClick }: { icon: string; label: string; onClick: () => void }) {
   return (
     <button className="tile-button" onClick={onClick}>
-      <span>{icon}</span>
+      {icon ? <span>{icon}</span> : null}
       <strong>{label}</strong>
     </button>
   );
