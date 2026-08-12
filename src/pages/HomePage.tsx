@@ -196,7 +196,7 @@ export function HomePage() {
     return (
       <PhoneShell>
         <header className="top-bar">
-          <strong>Рядом</strong>
+          <strong>hopee</strong>
           <button onClick={() => setStep('safety')}>Настройки</button>
         </header>
         <section className="home-panel">
@@ -314,7 +314,7 @@ export function HomePage() {
     return (
       <PhoneShell>
         <header className="top-bar">
-          <strong>Рядом</strong>
+          <strong>hopee</strong>
           <button onClick={() => setStep('admin')}>Профиль</button>
         </header>
         <ScreenHeader title={`Здравствуйте, ${profile?.name ?? 'Алия'}`} subtitle="Статус помощи" />

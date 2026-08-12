@@ -47,7 +47,7 @@ export function AuthPanel() {
           <span />
         </div>
         <p className="eyebrow">Сервис поддержки</p>
-        <h1>Рядом</h1>
+        <h1>hopee</h1>
         <p>Безопасная помощь с телефоном и повседневными цифровыми вопросами.</p>
       </section>
 
