@@ -49,8 +49,23 @@ export function createStarterMessages(sessionId: string, volunteerId: string): C
   return starterMessages.map((text) => createMessage(sessionId, volunteerId, 'system', text));
 }
 
-export function createMessage(sessionId: string, senderId: string, messageType: ChatMessage['messageType'], text: string): ChatMessage {
-  return { id: crypto.randomUUID(), sessionId, senderId, messageType, text, createdAt: new Date().toISOString() };
+export function createMessage(
+  sessionId: string,
+  senderId: string,
+  messageType: ChatMessage['messageType'],
+  text: string,
+  file?: { url: string; name: string },
+): ChatMessage {
+  return {
+    id: crypto.randomUUID(),
+    sessionId,
+    senderId,
+    messageType,
+    text,
+    createdAt: new Date().toISOString(),
+    fileUrl: file?.url,
+    fileName: file?.name,
+  };
 }
 
 export function hasSafetyRisk(text: string): boolean {

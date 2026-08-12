@@ -63,6 +63,8 @@ export type ChatMessage = {
   messageType: MessageType;
   text: string;
   createdAt: string;
+  fileUrl?: string;
+  fileName?: string;
 };
 
 export type Achievement = {

@@ -51,6 +51,8 @@ export function HomePage() {
   const [message, setMessage] = useState('');
   const [databaseError, setDatabaseError] = useState('');
   const searchTimerRef = useRef<number | undefined>(undefined);
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
+  const videoInputRef = useRef<HTMLInputElement | null>(null);
   const visibleAchievements = useMemo(() => achievements.slice(0, 3), []);
 
   useEffect(() => {
@@ -138,6 +140,16 @@ export function HomePage() {
     setMessages((items) => [...items, createMessage(helpSession.id, profile?.id ?? elders[0].id, type, textByType[type])]);
   };
 
+  const sendSelectedFile = (type: 'photo' | 'video', file?: File) => {
+    if (!helpSession || !file) return;
+    const url = URL.createObjectURL(file);
+    const fallbackText = type === 'photo' ? 'Фото' : 'Видео';
+    setMessages((items) => [
+      ...items,
+      createMessage(helpSession.id, profile?.id ?? elders[0].id, type, file.name || fallbackText, { url, name: file.name || fallbackText }),
+    ]);
+  };
+
   const completeHelp = () => {
     if (helpSession) setHelpSession(finishHelpSession(helpSession));
     setStep('rating');
@@ -203,7 +215,7 @@ export function HomePage() {
           <p className="eyebrow">Добрый день, {profile?.name ?? 'Валентина'}</p>
           <h1>Нужна помощь?</h1>
           <p>Найдем проверенного человека, который сейчас готов спокойно помочь в чате.</p>
-          <ActionButton onClick={() => startSearch('any')}>Найти помощника</ActionButton>
+          <ActionButton onClick={() => setStep('category')}>Выбрать вид помощи</ActionButton>
         </section>
         <section className="trust-note">
           <strong>Безопасный сервис поддержки</strong>
@@ -269,14 +281,38 @@ export function HomePage() {
         <div className="chat-list">
           {messages.map((item) => (
             <div key={item.id} className={item.senderId === profile?.id ? 'message message--mine' : 'message'}>
+              {item.messageType === 'photo' && item.fileUrl ? <img className="message-media" src={item.fileUrl} alt={item.fileName ?? 'Фото'} /> : null}
+              {item.messageType === 'video' && item.fileUrl ? <video className="message-media" src={item.fileUrl} controls /> : null}
               <p>{item.text}</p>
             </div>
           ))}
         </div>
         <div className="chat-tools">
-          <button onClick={() => sendQuickMedia('photo')}>Фото</button>
+          <button onClick={() => photoInputRef.current?.click()}>Фото</button>
           <button onClick={() => sendQuickMedia('voice')}>Голос</button>
-          <button onClick={() => sendQuickMedia('video')}>Видео</button>
+          <button onClick={() => videoInputRef.current?.click()}>Видео</button>
+          <input
+            ref={photoInputRef}
+            className="file-input"
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={(event) => {
+              sendSelectedFile('photo', event.target.files?.[0]);
+              event.target.value = '';
+            }}
+          />
+          <input
+            ref={videoInputRef}
+            className="file-input"
+            type="file"
+            accept="video/*"
+            capture="environment"
+            onChange={(event) => {
+              sendSelectedFile('video', event.target.files?.[0]);
+              event.target.value = '';
+            }}
+          />
         </div>
         <div className="chat-input">
           <input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Написать сообщение..." />

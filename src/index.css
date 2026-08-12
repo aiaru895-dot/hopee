@@ -311,6 +311,15 @@ button, input { font: inherit; }
   border-color: var(--accent-line);
   border-radius: 16px 16px 6px 16px;
 }
+.message-media {
+  width: min(100%, 260px);
+  max-height: 260px;
+  border-radius: 12px;
+  display: block;
+  object-fit: cover;
+  margin-bottom: 8px;
+  background: #f3eeee;
+}
 .message p { margin: 0; font-size: 18px; line-height: 1.42; }
 .history-list {
   display: grid;
@@ -350,6 +359,7 @@ button, input { font: inherit; }
   color: var(--muted);
   font-weight: 760;
 }
+.file-input { display: none; }
 .chat-input { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
 .chat-input button {
   border: 0;
