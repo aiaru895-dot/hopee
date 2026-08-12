@@ -10,7 +10,12 @@ type ActionButtonProps = {
 export function PhoneShell({ children }: { children: ReactNode }) {
   return (
     <main className="app-shell">
-      <section className="phone-shell">{children}</section>
+      <section className="phone-shell">
+        {children}
+        <div className="ad-slot">
+          <span>Место для рекламы</span>
+        </div>
+      </section>
     </main>
   );
 }

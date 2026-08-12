@@ -198,13 +198,17 @@ button, input { font: inherit; }
   text-align: center;
 }
 .search-indicator {
-  width: 92px;
-  height: 92px;
-  border: 1px solid var(--line);
+  width: 118px;
+  height: 118px;
+  border: 1px solid var(--accent-line);
   border-radius: 50%;
   display: grid;
   place-items: center;
   position: relative;
+  background:
+    radial-gradient(circle, #fff 0 38%, transparent 39%),
+    radial-gradient(circle, var(--accent-soft), transparent 68%);
+  box-shadow: 0 18px 50px rgba(184, 92, 120, 0.14);
 }
 .search-indicator::before,
 .search-indicator::after {
@@ -212,16 +216,50 @@ button, input { font: inherit; }
   position: absolute;
   border: 1px solid var(--accent-line);
   border-radius: 50%;
-  animation: pulse-ring 1.8s ease-out infinite;
+  animation: pulse-ring 1.9s ease-out infinite;
 }
-.search-indicator::before { inset: 12px; }
-.search-indicator::after { inset: 24px; animation-delay: 0.25s; }
+.search-indicator::before { inset: -8px; }
+.search-indicator::after { inset: 14px; animation-delay: 0.45s; }
 .search-indicator span {
-  width: 12px;
-  height: 12px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background: var(--primary);
+  position: relative;
+  animation: search-core 1.6s ease-in-out infinite;
 }
+.search-indicator span::before,
+.search-indicator span::after {
+  content: "";
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--safe);
+}
+.search-indicator span::before {
+  top: -22px;
+  left: 10px;
+}
+.search-indicator span::after {
+  right: -20px;
+  bottom: 1px;
+}
+.search-steps {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+.search-steps span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--primary);
+  opacity: 0.35;
+  animation: search-step 1.2s ease-in-out infinite;
+}
+.search-steps span:nth-child(2) { animation-delay: 0.18s; }
+.search-steps span:nth-child(3) { animation-delay: 0.36s; }
 
 .avatar {
   width: 72px;
@@ -464,9 +502,35 @@ input {
   font-weight: 760;
 }
 
+.ad-slot {
+  min-height: 58px;
+  border: 1px dashed var(--accent-line);
+  border-radius: 12px;
+  background: #fffafa;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  margin-top: auto;
+}
+.ad-slot span {
+  opacity: 0.76;
+}
+
 @keyframes pulse-ring {
   0% { transform: scale(0.86); opacity: 0.9; }
   100% { transform: scale(1.26); opacity: 0; }
+}
+
+@keyframes search-core {
+  0%, 100% { transform: scale(0.94) rotate(0deg); box-shadow: 0 0 0 0 rgba(184, 92, 120, 0.24); }
+  50% { transform: scale(1.06) rotate(18deg); box-shadow: 0 0 0 14px rgba(184, 92, 120, 0); }
+}
+
+@keyframes search-step {
+  0%, 100% { transform: translateY(0); opacity: 0.32; }
+  50% { transform: translateY(-5px); opacity: 0.9; }
 }
 
 @media (max-width: 420px) {

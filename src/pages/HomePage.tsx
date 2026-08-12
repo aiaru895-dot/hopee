@@ -249,6 +249,11 @@ export function HomePage() {
           <p className="eyebrow">Идет поиск</p>
           <h1>Ищем помощника</h1>
           <p>Проверяем доступных людей по вашей теме. Обычно это занимает несколько секунд.</p>
+          <div className="search-steps" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </div>
           <ActionButton tone="ghost" onClick={() => { window.clearTimeout(searchTimerRef.current); setStep('elderHome'); }}>Отменить поиск</ActionButton>
         </section>
       </PhoneShell>
