@@ -22,6 +22,7 @@ import type { Achievement, ChatMessage, HelpCategory, HelpSession, Role, Volunte
 type Step =
   | 'loading'
   | 'role'
+  | 'databaseSetup'
   | 'elderHome'
   | 'category'
   | 'roulette'
@@ -48,6 +49,7 @@ export function HomePage() {
   const [draft, setDraft] = useState('');
   const [rating, setRating] = useState(0);
   const [message, setMessage] = useState('');
+  const [databaseError, setDatabaseError] = useState('');
   const visibleAchievements = useMemo(() => achievements.slice(0, 3), []);
 
   useEffect(() => {
@@ -78,7 +80,10 @@ export function HomePage() {
           setVolunteerStats(await loadVolunteerStats(savedProfile.id));
         }
       })
-      .catch((error: Error) => setMessage(error.message));
+      .catch((error: Error) => {
+        setDatabaseError(error.message);
+        setStep('databaseSetup');
+      });
   }, [session]);
 
   const chooseRole = async (nextRole: Role) => {
@@ -178,6 +183,20 @@ export function HomePage() {
           <ActionButton onClick={() => chooseRole('elder')}>👵 Я хочу получить помощь</ActionButton>
           <ActionButton tone="calm" onClick={() => chooseRole('volunteer')}>🤝 Я хочу помогать</ActionButton>
         </div>
+        <ActionButton tone="ghost" onClick={() => supabase.auth.signOut()}>Выйти</ActionButton>
+      </PhoneShell>
+    );
+  }
+
+  if (step === 'databaseSetup') {
+    return (
+      <PhoneShell>
+        <ScreenHeader title="Нужно подключить базу" subtitle="Вход работает, но таблицы Рядом еще не записаны в Supabase." />
+        <div className="info-list">
+          <p>Попросите ментора запустить команды миграции. После этого профиль и статистика будут сохраняться.</p>
+          <p>{databaseError}</p>
+        </div>
+        <ActionButton onClick={() => window.location.reload()}>Проверить снова</ActionButton>
         <ActionButton tone="ghost" onClick={() => supabase.auth.signOut()}>Выйти</ActionButton>
       </PhoneShell>
     );
