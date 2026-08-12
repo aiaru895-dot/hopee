@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import type { Session } from '@supabase/supabase-js';
+import { AuthPanel } from '../components/AuthPanel';
 import { ActionButton, PhoneShell, ScreenHeader, StatusPill, TileButton } from '../components/RyadomUi';
 import { VolunteerCard } from '../components/VolunteerCard';
 import { achievements, elders, helpCategories } from '../lib/ryadomData';
@@ -11,12 +13,14 @@ import {
   findRandomVolunteer,
   finishHelpSession,
   hasSafetyRisk,
-  registerUser,
   resetMockBackend,
 } from '../lib/ryadomServices';
-import type { Achievement, ChatMessage, HelpCategory, HelpSession, Role, User, Volunteer } from '../lib/ryadomTypes';
+import { createMyProfile, loadMyProfile, loadVolunteerStats, type ProfileRow, type VolunteerProfileRow } from '../lib/ryadomProfile';
+import { supabase } from '../lib/supabase';
+import type { Achievement, ChatMessage, HelpCategory, HelpSession, Role, Volunteer } from '../lib/ryadomTypes';
 
 type Step =
+  | 'loading'
   | 'role'
   | 'elderHome'
   | 'category'
@@ -26,33 +30,78 @@ type Step =
   | 'rating'
   | 'contacts'
   | 'safety'
-  | 'volunteerJoin'
   | 'volunteerHome'
   | 'incoming'
   | 'volunteerProfile'
   | 'admin';
 
 export function HomePage() {
-  const [step, setStep] = useState<Step>('role');
+  const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<ProfileRow | null>(null);
+  const [volunteerStats, setVolunteerStats] = useState<VolunteerProfileRow | null>(null);
+  const [step, setStep] = useState<Step>('loading');
   const [role, setRole] = useState<Role>('elder');
-  const [currentUser, setCurrentUser] = useState<User>(elders[0]);
   const [volunteer, setVolunteer] = useState<Volunteer>();
   const [category, setCategory] = useState<HelpCategory>('any');
-  const [session, setSession] = useState<HelpSession>();
+  const [helpSession, setHelpSession] = useState<HelpSession>();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [rating, setRating] = useState(0);
+  const [message, setMessage] = useState('');
   const visibleAchievements = useMemo(() => achievements.slice(0, 3), []);
 
-  const chooseRole = (nextRole: Role) => {
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+    });
+    return () => data.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!session) {
+      setProfile(null);
+      setStep('role');
+      return;
+    }
+
+    loadMyProfile()
+      .then(async (savedProfile) => {
+        setProfile(savedProfile);
+        if (!savedProfile) {
+          setStep('role');
+          return;
+        }
+        setRole(savedProfile.role);
+        setStep(savedProfile.role === 'elder' ? 'elderHome' : 'volunteerHome');
+        if (savedProfile.role === 'volunteer') {
+          setVolunteerStats(await loadVolunteerStats(savedProfile.id));
+        }
+      })
+      .catch((error: Error) => setMessage(error.message));
+  }, [session]);
+
+  const chooseRole = async (nextRole: Role) => {
     setRole(nextRole);
-    setStep(nextRole === 'elder' ? 'elderHome' : 'volunteerJoin');
+    if (!session) {
+      setStep(nextRole === 'elder' ? 'elderHome' : 'volunteerHome');
+      return;
+    }
+    try {
+      const fallbackName = nextRole === 'elder' ? 'Валентина' : 'Помощник';
+      const savedProfile = await createMyProfile(nextRole, session.user.user_metadata.full_name ?? fallbackName);
+      setProfile(savedProfile);
+      if (nextRole === 'volunteer') setVolunteerStats(await loadVolunteerStats(savedProfile.id));
+      setStep(nextRole === 'elder' ? 'elderHome' : 'volunteerHome');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Не удалось сохранить профиль.');
+    }
   };
 
   const startRoulette = (help: HelpCategory) => {
     setCategory(help);
     setStep('roulette');
-    const request = createHelpRequest(currentUser.id, help);
+    const request = createHelpRequest(profile?.id ?? elders[0].id, help);
     window.setTimeout(() => {
       const matched = findRandomVolunteer(help) ?? findRandomVolunteer('any');
       if (!matched) {
@@ -61,26 +110,20 @@ export function HomePage() {
       }
       const nextSession = createHelpSession(request, matched);
       setVolunteer(matched);
-      setSession(nextSession);
+      setHelpSession(nextSession);
       setMessages(createStarterMessages(nextSession.id, matched.id));
       setStep('found');
     }, 2400);
   };
 
-  const openChat = () => {
-    if (!session) return;
-    setStep('chat');
-  };
-
   const sendText = () => {
-    if (!session || !draft.trim()) return;
-    const nextMessage = createMessage(session.id, currentUser.id, 'text', draft.trim());
-    setMessages((items) => [...items, nextMessage]);
+    if (!helpSession || !draft.trim()) return;
+    setMessages((items) => [...items, createMessage(helpSession.id, profile?.id ?? elders[0].id, 'text', draft.trim())]);
     setDraft('');
   };
 
   const sendQuickMedia = (type: ChatMessage['messageType']) => {
-    if (!session) return;
+    if (!helpSession) return;
     const textByType = {
       text: '',
       system: '',
@@ -88,18 +131,12 @@ export function HomePage() {
       photo: 'Фото отправлено',
       video: 'Короткое видео отправлено',
     };
-    setMessages((items) => [...items, createMessage(session.id, currentUser.id, type, textByType[type])]);
+    setMessages((items) => [...items, createMessage(helpSession.id, profile?.id ?? elders[0].id, type, textByType[type])]);
   };
 
   const completeHelp = () => {
-    if (session) finishHelpSession(session);
+    if (helpSession) finishHelpSession(helpSession);
     setStep('rating');
-  };
-
-  const completeVolunteerJoin = () => {
-    setCurrentUser(registerUser('volunteer', 'Новый помощник', 20, 'Алматы'));
-    setVolunteer(undefined);
-    setStep('volunteerHome');
   };
 
   const acceptIncomingRequest = () => {
@@ -108,19 +145,40 @@ export function HomePage() {
     const request = createHelpRequest(elders[0].id, 'talk');
     const nextSession = createHelpSession(request, matched);
     setVolunteer(matched);
-    setSession(nextSession);
-    setMessages(createStarterMessages(nextSession.id, currentUser.id));
+    setHelpSession(nextSession);
+    setMessages(createStarterMessages(nextSession.id, profile?.id ?? matched.id));
     setStep('chat');
   };
+
+  const finishRating = async () => {
+    if (profile?.role === 'volunteer') setVolunteerStats(await loadVolunteerStats(profile.id));
+    resetMockBackend();
+    setStep(role === 'elder' ? 'elderHome' : 'volunteerHome');
+  };
+
+  if (!session) return <AuthPanel />;
+
+  if (step === 'loading') {
+    return (
+      <PhoneShell>
+        <section className="center-screen">
+          <div className="roulette-wheel">❤️</div>
+          <h1>Загружаем...</h1>
+        </section>
+      </PhoneShell>
+    );
+  }
 
   if (step === 'role') {
     return (
       <PhoneShell>
         <ScreenHeader title="Добрый день ❤️" subtitle="Кто вы?" />
+        {message ? <p className="message">{message}</p> : null}
         <div className="stack">
           <ActionButton onClick={() => chooseRole('elder')}>👵 Я хочу получить помощь</ActionButton>
           <ActionButton tone="calm" onClick={() => chooseRole('volunteer')}>🤝 Я хочу помогать</ActionButton>
         </div>
+        <ActionButton tone="ghost" onClick={() => supabase.auth.signOut()}>Выйти</ActionButton>
       </PhoneShell>
     );
   }
@@ -139,7 +197,7 @@ export function HomePage() {
         <div className="bottom-nav">
           <button>🏠 Помощь</button>
           <button onClick={() => setStep('contacts')}>❤️ Близкие</button>
-          <button onClick={() => setStep('safety')}>⚙️ Настройки</button>
+          <button onClick={() => setStep('safety')}>⚙️ Профиль</button>
         </div>
       </PhoneShell>
     );
@@ -177,24 +235,24 @@ export function HomePage() {
       <PhoneShell>
         <ScreenHeader title="Помощник найден ❤️" subtitle={`Тема: ${helpCategories.find((item) => item.id === category)?.label}`} />
         <VolunteerCard volunteer={volunteer} />
-        <ActionButton onClick={openChat}>💬 Начать помощь</ActionButton>
+        <ActionButton onClick={() => setStep('chat')}>💬 Начать помощь</ActionButton>
         <ActionButton tone="ghost" onClick={() => startRoulette(category)}>Попробовать снова</ActionButton>
       </PhoneShell>
     );
   }
 
   if (step === 'chat' && volunteer) {
-    const risk = messages.some((message) => hasSafetyRisk(message.text));
+    const risk = messages.some((item) => hasSafetyRisk(item.text));
     return (
       <PhoneShell>
         <ScreenHeader title={volunteer.name} subtitle="Онлайн-чат помощи" />
         <StatusPill>🟢 Помощь идет</StatusPill>
         {risk ? <div className="warning">⚠️ Никогда не сообщайте пароль, SMS-код или PIN.</div> : null}
         <div className="chat-list">
-          {messages.map((message) => (
-            <div key={message.id} className={message.senderId === currentUser.id ? 'message message--mine' : 'message'}>
-              <span>{message.messageType === 'voice' ? '🎙️' : message.messageType === 'photo' ? '🖼️' : message.messageType === 'video' ? '📹' : '💬'}</span>
-              <p>{message.text}</p>
+          {messages.map((item) => (
+            <div key={item.id} className={item.senderId === profile?.id ? 'message message--mine' : 'message'}>
+              <span>{item.messageType === 'voice' ? '🎙️' : item.messageType === 'photo' ? '🖼️' : item.messageType === 'video' ? '📹' : '💬'}</span>
+              <p>{item.text}</p>
             </div>
           ))}
         </div>
@@ -217,42 +275,24 @@ export function HomePage() {
       <PhoneShell>
         <ScreenHeader title="Спасибо ❤️" subtitle="Оцените помощника." />
         <div className="stars">{[1, 2, 3, 4, 5].map((star) => <button key={star} onClick={() => setRating(star)}>{star <= rating ? '★' : '☆'}</button>)}</div>
-        <ActionButton onClick={() => { resetMockBackend(); setStep(role === 'elder' ? 'elderHome' : 'volunteerHome'); }}>Готово</ActionButton>
+        <ActionButton onClick={finishRating}>Готово</ActionButton>
         <ActionButton tone="ghost" onClick={() => setStep('safety')}>Пожаловаться</ActionButton>
-      </PhoneShell>
-    );
-  }
-
-  if (step === 'volunteerJoin') {
-    return (
-      <PhoneShell>
-        <ScreenHeader title="Регистрация" subtitle="Email и пароль подключаются через Supabase Auth." />
-        <div className="form-card">
-          <input placeholder="Email" defaultValue="aliya@example.com" />
-          <input placeholder="Пароль" type="password" defaultValue="password" />
-          <input placeholder="Имя" defaultValue="Алия" />
-          <input placeholder="Город" defaultValue="Алматы" />
-          <p>После регистрации профиль попадает на mock-проверку.</p>
-        </div>
-        <ActionButton onClick={completeVolunteerJoin}>Пройти mock-проверку</ActionButton>
       </PhoneShell>
     );
   }
 
   if (step === 'volunteerHome') {
     const baseVolunteer = volunteer ?? findRandomVolunteer('any');
-    const xpVolunteer = baseVolunteer ? addXP(baseVolunteer, 35) : undefined;
+    const demoStats = baseVolunteer ? addXP(baseVolunteer, 35).profile : null;
     return (
       <PhoneShell>
         <ScreenHeader title="Готовы помогать?" subtitle="Когда вы онлайн, рулетка может выбрать вас." />
         <StatusPill>🟢 Готов помогать</StatusPill>
-        {xpVolunteer ? (
-          <div className="stats">
-            <b>{xpVolunteer.profile.xp} XP</b>
-            <b>LVL {xpVolunteer.profile.level}</b>
-            <b>{xpVolunteer.profile.peopleHelped} помощи</b>
-          </div>
-        ) : null}
+        <div className="stats">
+          <b>{volunteerStats?.xp ?? demoStats?.xp ?? 0} XP</b>
+          <b>LVL {volunteerStats?.level ?? demoStats?.level ?? 1}</b>
+          <b>{volunteerStats?.people_helped ?? demoStats?.peopleHelped ?? 0} помощи</b>
+        </div>
         <ActionButton onClick={() => setStep('incoming')}>Показать запрос</ActionButton>
         <div className="bottom-nav">
           <button>🏠 Помощь</button>
@@ -274,24 +314,38 @@ export function HomePage() {
   }
 
   if (step === 'contacts' || step === 'safety' || step === 'volunteerProfile' || step === 'admin') {
-    return <InfoScreen step={step} achievements={visibleAchievements} onBack={() => setStep(role === 'elder' ? 'elderHome' : 'volunteerHome')} />;
+    return <InfoScreen step={step} profile={profile} stats={volunteerStats} achievements={visibleAchievements} onBack={() => setStep(role === 'elder' ? 'elderHome' : 'volunteerHome')} />;
   }
 
   return null;
 }
 
-function InfoScreen({ step, achievements, onBack }: { step: Step; achievements: Achievement[]; onBack: () => void }) {
-  const title = step === 'contacts' ? 'Мои близкие' : step === 'admin' ? 'Mock admin' : step === 'volunteerProfile' ? 'Мой прогресс' : 'Безопасность';
+function InfoScreen({
+  step,
+  profile,
+  stats,
+  achievements,
+  onBack,
+}: {
+  step: Step;
+  profile: ProfileRow | null;
+  stats: VolunteerProfileRow | null;
+  achievements: Achievement[];
+  onBack: () => void;
+}) {
+  const title = step === 'contacts' ? 'Мои близкие' : step === 'admin' ? 'Профиль' : step === 'volunteerProfile' ? 'Мой прогресс' : 'Безопасность';
   return (
     <PhoneShell>
-      <ScreenHeader title={title} />
+      <ScreenHeader title={title} subtitle={profile ? `${profile.name} · ${profile.city ?? 'город не указан'}` : undefined} />
       <div className="info-list">
         {step === 'contacts' ? <p>Дочь, сын, внук. Волонтеры не видят эти контакты.</p> : null}
         {step === 'safety' ? <p>Никому не сообщайте пароль, SMS-код, PIN или банковские данные.</p> : null}
-        {step === 'admin' ? <p>Mock-модерация: жалобы, блокировки, trust score и risk score готовы как интерфейсные состояния.</p> : null}
+        {step === 'admin' ? <p>Роль сохранена в Supabase: {profile?.role === 'elder' ? 'получаю помощь' : 'помогаю'}.</p> : null}
+        {step === 'volunteerProfile' && stats ? <p>⭐ {stats.rating} · {stats.xp} XP · помогли {stats.people_helped} людям · спасибо {stats.thanks_received}</p> : null}
         {step === 'volunteerProfile' ? achievements.map((item) => <p key={item.id}>{item.icon} <b>{item.name}</b><br />{item.description}</p>) : null}
       </div>
       <ActionButton onClick={onBack}>Назад</ActionButton>
+      <ActionButton tone="ghost" onClick={() => supabase.auth.signOut()}>Выйти</ActionButton>
     </PhoneShell>
   );
 }
