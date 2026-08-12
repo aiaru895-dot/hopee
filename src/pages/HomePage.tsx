@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { AuthPanel } from '../components/AuthPanel';
 import { ActionButton, PhoneShell, ScreenHeader, TileButton } from '../components/RyadomUi';
@@ -28,8 +28,8 @@ type Step =
   | 'search'
   | 'found'
   | 'chat'
+  | 'history'
   | 'rating'
-  | 'contacts'
   | 'safety'
   | 'volunteerHome'
   | 'incoming'
@@ -50,6 +50,7 @@ export function HomePage() {
   const [rating, setRating] = useState(0);
   const [message, setMessage] = useState('');
   const [databaseError, setDatabaseError] = useState('');
+  const searchTimerRef = useRef<number | undefined>(undefined);
   const visibleAchievements = useMemo(() => achievements.slice(0, 3), []);
 
   useEffect(() => {
@@ -82,6 +83,8 @@ export function HomePage() {
       });
   }, [session]);
 
+  useEffect(() => () => window.clearTimeout(searchTimerRef.current), []);
+
   const chooseRole = async (nextRole: Role) => {
     setRole(nextRole);
     if (!session) return;
@@ -98,10 +101,12 @@ export function HomePage() {
   };
 
   const startSearch = (help: HelpCategory) => {
+    window.clearTimeout(searchTimerRef.current);
     setCategory(help);
     setStep('search');
     const request = createHelpRequest(profile?.id ?? elders[0].id, help);
-    window.setTimeout(() => {
+
+    searchTimerRef.current = window.setTimeout(() => {
       const matched = findRandomVolunteer(help) ?? findRandomVolunteer('any');
       if (!matched) {
         setStep('category');
@@ -112,7 +117,7 @@ export function HomePage() {
       setHelpSession(nextSession);
       setMessages(createStarterMessages(nextSession.id, matched.id));
       setStep('found');
-    }, 2400);
+    }, 1800);
   };
 
   const sendText = () => {
@@ -134,7 +139,7 @@ export function HomePage() {
   };
 
   const completeHelp = () => {
-    if (helpSession) finishHelpSession(helpSession);
+    if (helpSession) setHelpSession(finishHelpSession(helpSession));
     setStep('rating');
   };
 
@@ -157,16 +162,7 @@ export function HomePage() {
 
   if (!session) return <AuthPanel />;
 
-  if (step === 'loading') {
-    return (
-      <PhoneShell>
-        <section className="center-screen">
-          <div className="search-indicator" aria-hidden="true"><span /></div>
-          <h1>Загружаем</h1>
-        </section>
-      </PhoneShell>
-    );
-  }
+  if (step === 'loading') return <LoadingScreen title="Загружаем" />;
 
   if (step === 'role') {
     return (
@@ -174,7 +170,7 @@ export function HomePage() {
         <ScreenHeader title="Добрый день" subtitle="Выберите, как хотите использовать сервис." />
         {message ? <p className="message">{message}</p> : null}
         <div className="stack">
-          <ActionButton onClick={() => chooseRole('elder')}>Я хочу получить помощь</ActionButton>
+          <ActionButton onClick={() => chooseRole('elder')}>Мне нужна помощь</ActionButton>
           <ActionButton tone="calm" onClick={() => chooseRole('volunteer')}>Я хочу помогать</ActionButton>
         </div>
         <ActionButton tone="ghost" onClick={() => supabase.auth.signOut()}>Выйти</ActionButton>
@@ -206,14 +202,14 @@ export function HomePage() {
         <section className="home-panel">
           <p className="eyebrow">Добрый день, {profile?.name ?? 'Валентина'}</p>
           <h1>Нужна помощь?</h1>
-          <p>Мы найдем проверенного человека, который сейчас готов вам помочь.</p>
+          <p>Найдем проверенного человека, который сейчас готов спокойно помочь в чате.</p>
           <ActionButton onClick={() => startSearch('any')}>Найти помощника</ActionButton>
         </section>
         <section className="trust-note">
           <strong>Безопасный сервис поддержки</strong>
-          <p>Помощники проходят проверку и могут помочь с телефоном, приложениями и повседневными цифровыми вопросами.</p>
+          <p>Помощники проходят проверку и помогают с телефоном, приложениями, интернетом и повседневными цифровыми вопросами.</p>
         </section>
-        <BottomNav items={['Помощь', 'Близкие', 'Настройки']} onSecond={() => setStep('contacts')} onThird={() => setStep('safety')} />
+        <BottomNav items={['Помощь', 'История', 'Настройки']} onSecond={() => setStep('history')} onThird={() => setStep('safety')} />
       </PhoneShell>
     );
   }
@@ -221,7 +217,7 @@ export function HomePage() {
   if (step === 'category') {
     return (
       <PhoneShell>
-        <ScreenHeader title="С чем помочь?" subtitle="Можно не выбирать: мы найдем доступного проверенного помощника." />
+        <ScreenHeader title="С чем помочь?" subtitle="Можно не выбирать тему: мы найдем доступного проверенного помощника." />
         <ActionButton onClick={() => startSearch('any')}>Найти любого помощника</ActionButton>
         <div className="grid">
           {helpCategories.filter((item) => item.id !== 'any').map((item) => (
@@ -238,8 +234,10 @@ export function HomePage() {
       <PhoneShell>
         <section className="center-screen">
           <div className="search-indicator" aria-hidden="true"><span /></div>
+          <p className="eyebrow">Идет поиск</p>
           <h1>Ищем помощника</h1>
-          <p>Проверяем доступных помощников. Это может занять несколько секунд.</p>
+          <p>Проверяем доступных людей по вашей теме. Обычно это занимает несколько секунд.</p>
+          <ActionButton tone="ghost" onClick={() => { window.clearTimeout(searchTimerRef.current); setStep('elderHome'); }}>Отменить поиск</ActionButton>
         </section>
       </PhoneShell>
     );
@@ -251,7 +249,7 @@ export function HomePage() {
         <ScreenHeader title="Помощник найден" subtitle={`Тема: ${helpCategories.find((item) => item.id === category)?.label}`} />
         <VolunteerCard volunteer={volunteer} />
         <ActionButton onClick={() => setStep('chat')}>Начать разговор</ActionButton>
-        <ActionButton tone="ghost" onClick={() => startSearch(category)}>Попробовать снова</ActionButton>
+        <ActionButton tone="ghost" onClick={() => startSearch(category)}>Другой помощник</ActionButton>
       </PhoneShell>
     );
   }
@@ -265,7 +263,7 @@ export function HomePage() {
             <h1>{volunteer.name} К.</h1>
             <p>Проверенный помощник</p>
           </div>
-          <button onClick={() => setStep('safety')}>Меню</button>
+          <button onClick={() => setStep('history')}>История</button>
         </header>
         {risk ? <div className="warning">Никогда не сообщайте пароль, SMS-код, PIN или банковские данные.</div> : null}
         <div className="chat-list">
@@ -276,7 +274,7 @@ export function HomePage() {
           ))}
         </div>
         <div className="chat-tools">
-          <button onClick={() => sendQuickMedia('photo')}>Файл</button>
+          <button onClick={() => sendQuickMedia('photo')}>Фото</button>
           <button onClick={() => sendQuickMedia('voice')}>Голос</button>
           <button onClick={() => sendQuickMedia('video')}>Видео</button>
         </div>
@@ -287,6 +285,10 @@ export function HomePage() {
         <ActionButton tone="danger" onClick={completeHelp}>Закончить помощь</ActionButton>
       </PhoneShell>
     );
+  }
+
+  if (step === 'history') {
+    return <HistoryScreen session={helpSession} volunteer={volunteer} messages={messages} onChat={() => setStep('chat')} onBack={() => setStep('elderHome')} />;
   }
 
   if (step === 'rating') {
@@ -308,13 +310,14 @@ export function HomePage() {
     const xp = volunteerStats?.xp ?? demoStats?.xp ?? 0;
     const level = volunteerStats?.level ?? demoStats?.level ?? 1;
     const helped = volunteerStats?.people_helped ?? demoStats?.peopleHelped ?? 0;
+
     return (
       <PhoneShell>
         <header className="top-bar">
           <strong>Рядом</strong>
           <button onClick={() => setStep('admin')}>Профиль</button>
         </header>
-        <ScreenHeader title={`Добро пожаловать, ${profile?.name ?? 'Алия'}`} subtitle="Статус помощи" />
+        <ScreenHeader title={`Здравствуйте, ${profile?.name ?? 'Алия'}`} subtitle="Статус помощи" />
         <section className="status-card">
           <div>
             <p className="eyebrow">Готовность</p>
@@ -324,8 +327,8 @@ export function HomePage() {
           <span>ON</span>
         </section>
         <div className="stats">
-          <b><span>{helped}</span>Помощи</b>
-          <b><span>{volunteerStats?.rating ?? demoStats?.rating ?? 4.9}</span>Оценка</b>
+          <b><span>{helped}</span>помощи</b>
+          <b><span>{volunteerStats?.rating ?? demoStats?.rating ?? 4.9}</span>оценка</b>
           <b><span>{xp}</span>XP</b>
         </div>
         <section className="level-card">
@@ -350,11 +353,22 @@ export function HomePage() {
     );
   }
 
-  if (step === 'contacts' || step === 'safety' || step === 'volunteerProfile' || step === 'admin') {
+  if (step === 'safety' || step === 'volunteerProfile' || step === 'admin') {
     return <InfoScreen step={step} profile={profile} stats={volunteerStats} achievements={visibleAchievements} onBack={() => setStep(role === 'elder' ? 'elderHome' : 'volunteerHome')} />;
   }
 
   return null;
+}
+
+function LoadingScreen({ title }: { title: string }) {
+  return (
+    <PhoneShell>
+      <section className="center-screen">
+        <div className="search-indicator" aria-hidden="true"><span /></div>
+        <h1>{title}</h1>
+      </section>
+    </PhoneShell>
+  );
 }
 
 function BottomNav({ items, onSecond, onThird }: { items: string[]; onSecond: () => void; onThird: () => void }) {
@@ -364,6 +378,48 @@ function BottomNav({ items, onSecond, onThird }: { items: string[]; onSecond: ()
       <button onClick={onSecond}>{items[1]}</button>
       <button onClick={onThird}>{items[2]}</button>
     </nav>
+  );
+}
+
+function HistoryScreen({
+  session,
+  volunteer,
+  messages,
+  onChat,
+  onBack,
+}: {
+  session?: HelpSession;
+  volunteer?: Volunteer;
+  messages: ChatMessage[];
+  onChat: () => void;
+  onBack: () => void;
+}) {
+  const sessionDate = session ? new Date(session.startedAt).toLocaleDateString('ru-RU') : 'Сегодня';
+  return (
+    <PhoneShell>
+      <ScreenHeader title="Мои помощи" subtitle="Текущие и завершенные обращения." />
+      <div className="history-list">
+        {session && volunteer ? (
+          <button className="history-item" onClick={onChat}>
+            <span>{session.status === 'completed' ? 'Завершено' : 'Сейчас'}</span>
+            <strong>{volunteer.name} К.</strong>
+            <p>{sessionDate} · {messages.length} сообщений</p>
+          </button>
+        ) : (
+          <div className="history-item">
+            <span>Пока пусто</span>
+            <strong>Здесь появятся ваши обращения</strong>
+            <p>После поиска помощника чат можно будет открыть снова.</p>
+          </div>
+        )}
+        <div className="history-item">
+          <span>Пример</span>
+          <strong>Помощь с телефоном</strong>
+          <p>Недавний чат · завершено</p>
+        </div>
+      </div>
+      <ActionButton onClick={onBack}>Назад</ActionButton>
+    </PhoneShell>
   );
 }
 
@@ -380,12 +436,11 @@ function InfoScreen({
   achievements: Achievement[];
   onBack: () => void;
 }) {
-  const title = step === 'contacts' ? 'Близкие' : step === 'admin' ? 'Профиль' : step === 'volunteerProfile' ? 'Прогресс' : 'Безопасность';
+  const title = step === 'admin' ? 'Профиль' : step === 'volunteerProfile' ? 'Прогресс' : 'Безопасность';
   return (
     <PhoneShell>
       <ScreenHeader title={title} subtitle={profile ? `${profile.name} · ${profile.city ?? 'город не указан'}` : undefined} />
       <div className="info-list">
-        {step === 'contacts' ? <p>Дочь, сын, внук. Помощники не видят эти контакты.</p> : null}
         {step === 'safety' ? <p>Никому не сообщайте пароль, SMS-код, PIN или банковские данные.</p> : null}
         {step === 'safety' ? <p>Если разговор вызывает сомнения, завершите помощь и отправьте жалобу.</p> : null}
         {step === 'admin' ? <p>Роль сохранена в Supabase: {profile?.role === 'elder' ? 'получаю помощь' : 'помогаю'}.</p> : null}

@@ -312,6 +312,35 @@ button, input { font: inherit; }
   border-radius: 16px 16px 6px 16px;
 }
 .message p { margin: 0; font-size: 18px; line-height: 1.42; }
+.history-list {
+  display: grid;
+  gap: 10px;
+}
+.history-item {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 14px;
+  text-align: left;
+  display: grid;
+  gap: 5px;
+}
+.history-item span {
+  color: var(--primary-dark);
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.history-item strong {
+  color: var(--ink);
+  font-size: 18px;
+}
+.history-item p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+}
 .chat-tools { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .chat-tools button {
   min-height: 50px;
