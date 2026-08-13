@@ -47,6 +47,7 @@ type ThemeMode = 'light' | 'dark';
 
 export function HomePage() {
   const [session, setSession] = useState<Session | null>(null);
+  const [guestMode, setGuestMode] = useState(false);
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [volunteerStats, setVolunteerStats] = useState<VolunteerProfileRow | null>(null);
   const [step, setStep] = useState<Step>('loading');
@@ -78,8 +79,10 @@ export function HomePage() {
 
   useEffect(() => {
     if (!session) {
-      setProfile(null);
-      setStep('role');
+      if (!guestMode) {
+        setProfile(null);
+        setStep('role');
+      }
       return;
     }
 
@@ -98,7 +101,7 @@ export function HomePage() {
         setDatabaseError(error.message);
         setStep('databaseSetup');
       });
-  }, [session]);
+  }, [session, guestMode]);
 
   useEffect(() => () => window.clearTimeout(searchTimerRef.current), []);
 
@@ -230,7 +233,29 @@ export function HomePage() {
     setStep(role === 'elder' ? 'elderHome' : 'volunteerHome');
   };
 
-  if (!session) return <AuthPanel />;
+  const enterAsGuest = () => {
+    setGuestMode(true);
+    setRole('elder');
+    setProfile({
+      id: elders[0].id,
+      auth_user_id: 'guest',
+      role: 'elder',
+      name: 'Гость',
+      age: null,
+      city: null,
+      avatar_url: null,
+    });
+    setStep('elderHome');
+  };
+
+  const signOutApp = async () => {
+    setGuestMode(false);
+    setProfile(null);
+    setStep('role');
+    await supabase.auth.signOut();
+  };
+
+  if (!session && !guestMode) return <AuthPanel onGuest={enterAsGuest} />;
 
   if (step === 'loading') return <LoadingScreen title="Загружаем" />;
 
@@ -517,6 +542,7 @@ export function HomePage() {
         achievements={visibleAchievements}
         themeMode={themeMode}
         onThemeChange={setThemeMode}
+        onSignOut={signOutApp}
         onBack={() => setStep(role === 'elder' ? 'elderHome' : 'volunteerHome')}
       />
     );
@@ -637,6 +663,7 @@ function InfoScreen({
   achievements,
   themeMode,
   onThemeChange,
+  onSignOut,
   onBack,
 }: {
   step: Step;
@@ -645,6 +672,7 @@ function InfoScreen({
   achievements: Achievement[];
   themeMode: ThemeMode;
   onThemeChange: (theme: ThemeMode) => void;
+  onSignOut: () => void;
   onBack: () => void;
 }) {
   const title = step === 'admin' ? 'Профиль' : step === 'volunteerProfile' ? 'Прогресс' : 'Безопасность';
@@ -670,7 +698,7 @@ function InfoScreen({
         {step === 'volunteerProfile' ? achievements.map((item) => <p key={item.id}><b>{item.name}</b><br />{item.description}</p>) : null}
       </div>
       <ActionButton onClick={onBack}>Назад</ActionButton>
-      <ActionButton tone="ghost" onClick={() => supabase.auth.signOut()}>Выйти из аккаунта</ActionButton>
+      <ActionButton tone="ghost" onClick={onSignOut}>Выйти из аккаунта</ActionButton>
     </PhoneShell>
   );
 }

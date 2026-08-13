@@ -4,7 +4,11 @@ import { signInWithGoogle } from '../lib/ryadomProfile';
 import { ActionButton, PhoneShell } from './RyadomUi';
 import { SupabaseSetupMessage } from './SupabaseSetupMessage';
 
-export function AuthPanel() {
+type AuthPanelProps = {
+  onGuest?: () => void;
+};
+
+export function AuthPanel({ onGuest }: AuthPanelProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
@@ -42,6 +46,10 @@ export function AuthPanel() {
 
   return (
     <PhoneShell>
+      <section className="app-intro" aria-hidden="true">
+        <img src="/app-icon.svg" alt="" />
+        <strong>hopee</strong>
+      </section>
       <section className="login-hero">
         <img className="brand-symbol brand-symbol--hero" src="/app-icon.svg" alt="" aria-hidden="true" />
         <p className="eyebrow">Сервис поддержки</p>
@@ -50,6 +58,8 @@ export function AuthPanel() {
       </section>
 
       <ActionButton onClick={handleGoogle} disabled={busy}>Войти через Google</ActionButton>
+
+      {onGuest ? <ActionButton tone="calm" onClick={onGuest}>Войти как гость</ActionButton> : null}
 
       <form className="form-card" onSubmit={handleEmail}>
         <input type="email" placeholder="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
