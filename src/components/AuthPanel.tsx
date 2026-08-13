@@ -1,14 +1,18 @@
 import { useState } from 'react';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { signInWithGoogle } from '../lib/ryadomProfile';
+import type { Language } from '../lib/i18n';
+import { uiText } from '../lib/i18n';
 import { ActionButton, PhoneShell } from './RyadomUi';
 import { SupabaseSetupMessage } from './SupabaseSetupMessage';
 
 type AuthPanelProps = {
+  language: Language;
   onGuest?: () => void;
 };
 
-export function AuthPanel({ onGuest }: AuthPanelProps) {
+export function AuthPanel({ language, onGuest }: AuthPanelProps) {
+  const text = uiText[language];
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
@@ -52,26 +56,26 @@ export function AuthPanel({ onGuest }: AuthPanelProps) {
       </section>
       <section className="login-hero">
         <img className="brand-symbol brand-symbol--hero" src="/app-icon.svg" alt="" aria-hidden="true" />
-        <p className="eyebrow">Сервис поддержки</p>
+        <p className="eyebrow">{text.service}</p>
         <h1>KOMEK</h1>
         <p className="brand-tagline">Generations helping generations.</p>
-        <p>Безопасная помощь с телефоном и повседневными цифровыми вопросами.</p>
+        <p>{text.intro}</p>
       </section>
 
-      <ActionButton onClick={handleGoogle} disabled={busy}>Войти через Google</ActionButton>
+      <ActionButton onClick={handleGoogle} disabled={busy}>{text.google}</ActionButton>
 
-      {onGuest ? <ActionButton tone="calm" onClick={onGuest}>Войти как гость</ActionButton> : null}
+      {onGuest ? <ActionButton tone="calm" onClick={onGuest}>{text.guest}</ActionButton> : null}
 
       <form className="form-card" onSubmit={handleEmail}>
         <input type="email" placeholder="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
-        <input type="password" placeholder="пароль" value={password} onChange={(event) => setPassword(event.target.value)} minLength={6} required />
-        <button className="submit-button" disabled={busy}>{mode === 'signin' ? 'Войти' : 'Создать аккаунт'}</button>
+        <input type="password" placeholder={text.password} value={password} onChange={(event) => setPassword(event.target.value)} minLength={6} required />
+        <button className="submit-button" disabled={busy}>{mode === 'signin' ? text.signIn : text.signUp}</button>
       </form>
 
       {message ? <p className="message">{message}</p> : null}
 
       <ActionButton tone="ghost" onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}>
-        {mode === 'signin' ? 'Создать аккаунт' : 'Уже есть аккаунт'}
+        {mode === 'signin' ? text.signUp : text.haveAccount}
       </ActionButton>
     </PhoneShell>
   );

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { AuthPanel } from '../components/AuthPanel';
 import { ActionButton, PhoneShell, ScreenHeader, TileButton } from '../components/RyadomUi';
@@ -21,6 +21,8 @@ import {
 } from '../lib/ryadomServices';
 import { createMyProfile, loadMyProfile, loadVolunteerStats, type ProfileRow, type VolunteerProfileRow } from '../lib/ryadomProfile';
 import { supabase } from '../lib/supabase';
+import type { Language } from '../lib/i18n';
+import { languageNames, uiText } from '../lib/i18n';
 import type { Achievement, ChatMessage, HelpCategory, HelpSession, ReportReason, Role, Volunteer } from '../lib/ryadomTypes';
 
 type Step =
@@ -44,6 +46,7 @@ type Step =
   | 'admin';
 
 type ThemeMode = 'light' | 'dark';
+type FontMode = 'normal' | 'large';
 type BrowserAudioWindow = Window & typeof globalThis & {
   webkitAudioContext?: typeof AudioContext;
 };
@@ -69,11 +72,18 @@ export function HomePage() {
   const [aiSafety, setAiSafety] = useState<AiSafetyResult | null>(null);
   const [isCheckingSafety, setIsCheckingSafety] = useState(false);
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => (localStorage.getItem('hopee-theme') === 'dark' ? 'dark' : 'light'));
+  const [fontMode, setFontMode] = useState<FontMode>(() => (localStorage.getItem('komek-font') === 'large' ? 'large' : 'normal'));
+  const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('komek-sound') !== 'off');
+  const [language, setLanguage] = useState<Language>(() => {
+    const savedLanguage = localStorage.getItem('komek-language');
+    return savedLanguage === 'kk' || savedLanguage === 'en' ? savedLanguage : 'ru';
+  });
   const searchTimerRef = useRef<number | undefined>(undefined);
   const searchSoundRef = useRef<{ context: AudioContext; timer: number } | null>(null);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const videoInputRef = useRef<HTMLInputElement | null>(null);
   const visibleAchievements = useMemo(() => achievements.slice(0, 3), []);
+  const text = uiText[language];
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -117,14 +127,30 @@ export function HomePage() {
     localStorage.setItem('hopee-theme', themeMode);
   }, [themeMode]);
 
+  useEffect(() => {
+    document.documentElement.dataset.fontSize = fontMode;
+    localStorage.setItem('komek-font', fontMode);
+  }, [fontMode]);
+
+  useEffect(() => {
+    localStorage.setItem('komek-sound', soundEnabled ? 'on' : 'off');
+    if (!soundEnabled) stopSearchSound();
+  }, [soundEnabled]);
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+    localStorage.setItem('komek-language', language);
+  }, [language]);
+
   const chooseRole = async (nextRole: Role) => {
     setRole(nextRole);
     if (guestMode) {
+      playEnterSound();
       setProfile({
         id: elders[0].id,
         auth_user_id: 'guest',
         role: nextRole,
-        name: 'Гость',
+        name: 'Р“РѕСЃС‚СЊ',
         age: null,
         city: null,
         avatar_url: null,
@@ -135,13 +161,14 @@ export function HomePage() {
     if (!session) return;
 
     try {
-      const fallbackName = nextRole === 'elder' ? 'Валентина' : 'Помощник';
+      const fallbackName = nextRole === 'elder' ? 'Р’Р°Р»РµРЅС‚РёРЅР°' : 'РџРѕРјРѕС‰РЅРёРє';
       const savedProfile = await createMyProfile(nextRole, session.user.user_metadata.full_name ?? fallbackName);
+      playEnterSound();
       setProfile(savedProfile);
       if (nextRole === 'volunteer') setVolunteerStats(await loadVolunteerStats(savedProfile.id));
       setStep(nextRole === 'elder' ? 'elderHome' : 'volunteerHome');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Не удалось сохранить профиль.');
+      setMessage(error instanceof Error ? error.message : 'РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ РїСЂРѕС„РёР»СЊ.');
     }
   };
 
@@ -172,6 +199,7 @@ export function HomePage() {
   };
 
   const startSearchSound = () => {
+    if (!soundEnabled) return;
     stopSearchSound();
     const audioWindow = window as BrowserAudioWindow;
     const AudioContextClass = audioWindow.AudioContext ?? audioWindow.webkitAudioContext;
@@ -204,6 +232,36 @@ export function HomePage() {
     searchSoundRef.current = null;
   };
 
+  const playEnterSound = () => {
+    if (!soundEnabled) return;
+    const audioWindow = window as BrowserAudioWindow;
+    const AudioContextClass = audioWindow.AudioContext ?? audioWindow.webkitAudioContext;
+    if (!AudioContextClass) return;
+    const context = new AudioContextClass();
+    const noiseLength = Math.floor(context.sampleRate * 0.42);
+    const buffer = context.createBuffer(1, noiseLength, context.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let index = 0; index < noiseLength; index += 1) {
+      data[index] = (Math.random() * 2 - 1) * (1 - index / noiseLength);
+    }
+    const noise = context.createBufferSource();
+    const filter = context.createBiquadFilter();
+    const gain = context.createGain();
+    noise.buffer = buffer;
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(900, context.currentTime);
+    filter.frequency.exponentialRampToValueAtTime(2200, context.currentTime + 0.28);
+    gain.gain.setValueAtTime(0.0001, context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.055, context.currentTime + 0.04);
+    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.42);
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(context.destination);
+    noise.start();
+    noise.stop(context.currentTime + 0.44);
+    window.setTimeout(() => void context.close(), 520);
+  };
+
   const sendText = async () => {
     if (!helpSession || !draft.trim() || blockedChat) return;
     const nextMessage = createMessage(helpSession.id, profile?.id ?? elders[0].id, 'text', draft.trim());
@@ -228,9 +286,9 @@ export function HomePage() {
     const textByType = {
       text: '',
       system: '',
-      voice: 'Голосовое сообщение, 12 секунд',
-      photo: 'Фото отправлено',
-      video: 'Короткое видео отправлено',
+      voice: 'Р“РѕР»РѕСЃРѕРІРѕРµ СЃРѕРѕР±С‰РµРЅРёРµ, 12 СЃРµРєСѓРЅРґ',
+      photo: 'Р¤РѕС‚Рѕ РѕС‚РїСЂР°РІР»РµРЅРѕ',
+      video: 'РљРѕСЂРѕС‚РєРѕРµ РІРёРґРµРѕ РѕС‚РїСЂР°РІР»РµРЅРѕ',
     };
     setMessages((items) => [...items, createMessage(helpSession.id, profile?.id ?? elders[0].id, type, textByType[type])]);
   };
@@ -238,7 +296,7 @@ export function HomePage() {
   const sendSelectedFile = (type: 'photo' | 'video', file?: File) => {
     if (!helpSession || !file || blockedChat) return;
     const url = URL.createObjectURL(file);
-    const fallbackText = type === 'photo' ? 'Фото' : 'Видео';
+    const fallbackText = type === 'photo' ? 'Р¤РѕС‚Рѕ' : 'Р’РёРґРµРѕ';
     setMessages((items) => [
       ...items,
       createMessage(helpSession.id, profile?.id ?? elders[0].id, type, file.name || fallbackText, { url, name: file.name || fallbackText }),
@@ -279,7 +337,7 @@ export function HomePage() {
   };
 
   const stopUnsafeHelp = () => {
-    submitReport('bad_behavior', 'Пользователь нажал кнопку "Мне небезопасно".');
+    submitReport('bad_behavior', 'РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ РЅР°Р¶Р°Р» РєРЅРѕРїРєСѓ "РњРЅРµ РЅРµР±РµР·РѕРїР°СЃРЅРѕ".');
     blockCurrentVolunteer();
   };
 
@@ -303,20 +361,20 @@ export function HomePage() {
     await supabase.auth.signOut();
   };
 
-  if (!session && !guestMode) return <AuthPanel onGuest={enterAsGuest} />;
+  if (!session && !guestMode) return <AuthPanel language={language} onGuest={enterAsGuest} />;
 
-  if (step === 'loading') return <LoadingScreen title="Загружаем" />;
+  if (step === 'loading') return <LoadingScreen title="Р—Р°РіСЂСѓР¶Р°РµРј" />;
 
   if (step === 'role') {
     return (
       <PhoneShell screenKey={step}>
-        <ScreenHeader title="Добрый день" subtitle="Выберите, как хотите использовать сервис." />
+        <ScreenHeader title={text.roleTitle} subtitle={text.roleSubtitle} />
         {message ? <p className="message">{message}</p> : null}
         <div className="stack">
-          <ActionButton onClick={() => chooseRole('elder')}>Мне нужна помощь</ActionButton>
-          <ActionButton tone="calm" onClick={() => chooseRole('volunteer')}>Я хочу помогать</ActionButton>
+          <ActionButton onClick={() => chooseRole('elder')}>{text.needHelp}</ActionButton>
+          <ActionButton tone="calm" onClick={() => chooseRole('volunteer')}>{text.wantHelp}</ActionButton>
         </div>
-        <ActionButton tone="ghost" onClick={signOutApp}>Выйти</ActionButton>
+        <ActionButton tone="ghost" onClick={signOutApp}>{text.exit}</ActionButton>
       </PhoneShell>
     );
   }
@@ -324,13 +382,13 @@ export function HomePage() {
   if (step === 'databaseSetup') {
     return (
       <PhoneShell screenKey={step}>
-        <ScreenHeader title="Нужно подключить базу" subtitle="Вход работает, но таблицы приложения еще не записаны в Supabase." />
+        <ScreenHeader title="РќСѓР¶РЅРѕ РїРѕРґРєР»СЋС‡РёС‚СЊ Р±Р°Р·Сѓ" subtitle="Р’С…РѕРґ СЂР°Р±РѕС‚Р°РµС‚, РЅРѕ С‚Р°Р±Р»РёС†С‹ РїСЂРёР»РѕР¶РµРЅРёСЏ РµС‰Рµ РЅРµ Р·Р°РїРёСЃР°РЅС‹ РІ Supabase." />
         <div className="info-list">
-          <p>Запустите миграции Supabase. После этого профиль и статистика будут сохраняться.</p>
+          <p>Р—Р°РїСѓСЃС‚РёС‚Рµ РјРёРіСЂР°С†РёРё Supabase. РџРѕСЃР»Рµ СЌС‚РѕРіРѕ РїСЂРѕС„РёР»СЊ Рё СЃС‚Р°С‚РёСЃС‚РёРєР° Р±СѓРґСѓС‚ СЃРѕС…СЂР°РЅСЏС‚СЊСЃСЏ.</p>
           <p>{databaseError}</p>
         </div>
-        <ActionButton onClick={() => window.location.reload()}>Проверить снова</ActionButton>
-        <ActionButton tone="ghost" onClick={signOutApp}>Выйти</ActionButton>
+        <ActionButton onClick={() => window.location.reload()}>{text.retry}</ActionButton>
+        <ActionButton tone="ghost" onClick={signOutApp}>{text.exit}</ActionButton>
       </PhoneShell>
     );
   }
@@ -340,19 +398,19 @@ export function HomePage() {
       <PhoneShell screenKey={step}>
         <header className="top-bar">
           <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />KOMEK</strong>
-          <button onClick={() => setStep('safety')}>Настройки</button>
+          <button onClick={() => setStep('safety')}>{text.settings}</button>
         </header>
         <section className="home-panel">
-          <p className="eyebrow">Добрый день, {profile?.name ?? 'Валентина'}</p>
-          <h1>Нужна помощь?</h1>
-          <p>Найдем проверенного человека, который сейчас готов спокойно помочь в чате.</p>
-          <ActionButton onClick={() => setStep('category')}>Выбрать вид помощи</ActionButton>
+          <p className="eyebrow">Р”РѕР±СЂС‹Р№ РґРµРЅСЊ, {profile?.name ?? 'Р’Р°Р»РµРЅС‚РёРЅР°'}</p>
+          <h1>РќСѓР¶РЅР° РїРѕРјРѕС‰СЊ?</h1>
+          <p>РќР°Р№РґРµРј РїСЂРѕРІРµСЂРµРЅРЅРѕРіРѕ С‡РµР»РѕРІРµРєР°, РєРѕС‚РѕСЂС‹Р№ СЃРµР№С‡Р°СЃ РіРѕС‚РѕРІ СЃРїРѕРєРѕР№РЅРѕ РїРѕРјРѕС‡СЊ РІ С‡Р°С‚Рµ.</p>
+          <ActionButton onClick={() => setStep('category')}>{text.chooseHelp}</ActionButton>
         </section>
         <section className="trust-note">
-          <strong>Безопасный сервис поддержки</strong>
-          <p>Помощники проходят проверку и помогают с телефоном, приложениями, интернетом и повседневными цифровыми вопросами.</p>
+          <strong>Р‘РµР·РѕРїР°СЃРЅС‹Р№ СЃРµСЂРІРёСЃ РїРѕРґРґРµСЂР¶РєРё</strong>
+          <p>РџРѕРјРѕС‰РЅРёРєРё РїСЂРѕС…РѕРґСЏС‚ РїСЂРѕРІРµСЂРєСѓ Рё РїРѕРјРѕРіР°СЋС‚ СЃ С‚РµР»РµС„РѕРЅРѕРј, РїСЂРёР»РѕР¶РµРЅРёСЏРјРё, РёРЅС‚РµСЂРЅРµС‚РѕРј Рё РїРѕРІСЃРµРґРЅРµРІРЅС‹РјРё С†РёС„СЂРѕРІС‹РјРё РІРѕРїСЂРѕСЃР°РјРё.</p>
         </section>
-        <BottomNav items={['Помощь', 'История', 'Настройки']} onSecond={() => setStep('history')} onThird={() => setStep('safety')} />
+        <BottomNav items={[text.help, text.history, text.settings]} onSecond={() => setStep('history')} onThird={() => setStep('safety')} />
       </PhoneShell>
     );
   }
@@ -360,14 +418,14 @@ export function HomePage() {
   if (step === 'category') {
     return (
       <PhoneShell screenKey={step}>
-        <ScreenHeader title="С чем помочь?" subtitle="Можно не выбирать тему: мы найдем доступного проверенного помощника." />
-        <ActionButton onClick={() => startSearch('any')}>Найти любого помощника</ActionButton>
+        <ScreenHeader title="РЎ С‡РµРј РїРѕРјРѕС‡СЊ?" subtitle="РњРѕР¶РЅРѕ РЅРµ РІС‹Р±РёСЂР°С‚СЊ С‚РµРјСѓ: РјС‹ РЅР°Р№РґРµРј РґРѕСЃС‚СѓРїРЅРѕРіРѕ РїСЂРѕРІРµСЂРµРЅРЅРѕРіРѕ РїРѕРјРѕС‰РЅРёРєР°." />
+        <ActionButton onClick={() => startSearch('any')}>{text.anyHelper}</ActionButton>
         <div className="grid">
           {helpCategories.filter((item) => item.id !== 'any').map((item) => (
             <TileButton key={item.id} icon="" label={item.label} onClick={() => startSearch(item.id)} />
           ))}
         </div>
-        <ActionButton tone="ghost" onClick={() => setStep('elderHome')}>Назад</ActionButton>
+        <ActionButton tone="ghost" onClick={() => setStep('elderHome')}>{text.back}</ActionButton>
       </PhoneShell>
     );
   }
@@ -377,15 +435,15 @@ export function HomePage() {
       <PhoneShell screenKey={step}>
         <section className="center-screen">
           <div className="search-indicator" aria-hidden="true"><span /></div>
-          <p className="eyebrow">Идет поиск</p>
-          <h1>Ищем помощника</h1>
-          <p>Проверяем доступных людей по вашей теме. Обычно это занимает несколько секунд.</p>
+          <p className="eyebrow">РРґРµС‚ РїРѕРёСЃРє</p>
+          <h1>РС‰РµРј РїРѕРјРѕС‰РЅРёРєР°</h1>
+          <p>РџСЂРѕРІРµСЂСЏРµРј РґРѕСЃС‚СѓРїРЅС‹С… Р»СЋРґРµР№ РїРѕ РІР°С€РµР№ С‚РµРјРµ. РћР±С‹С‡РЅРѕ СЌС‚Рѕ Р·Р°РЅРёРјР°РµС‚ РЅРµСЃРєРѕР»СЊРєРѕ СЃРµРєСѓРЅРґ.</p>
           <div className="search-steps" aria-hidden="true">
             <span />
             <span />
             <span />
           </div>
-          <ActionButton tone="ghost" onClick={() => { window.clearTimeout(searchTimerRef.current); stopSearchSound(); setStep('elderHome'); }}>Отменить поиск</ActionButton>
+          <ActionButton tone="ghost" onClick={() => { window.clearTimeout(searchTimerRef.current); stopSearchSound(); setStep('elderHome'); }}>{text.cancelSearch}</ActionButton>
         </section>
       </PhoneShell>
     );
@@ -394,10 +452,10 @@ export function HomePage() {
   if (step === 'found' && volunteer) {
     return (
       <PhoneShell screenKey={step}>
-        <ScreenHeader title="Помощник найден" subtitle={`Тема: ${helpCategories.find((item) => item.id === category)?.label}`} />
+        <ScreenHeader title="РџРѕРјРѕС‰РЅРёРє РЅР°Р№РґРµРЅ" subtitle={`РўРµРјР°: ${helpCategories.find((item) => item.id === category)?.label}`} />
         <VolunteerCard volunteer={volunteer} />
-        <ActionButton onClick={() => setStep('chat')}>Начать разговор</ActionButton>
-        <ActionButton tone="ghost" onClick={() => startSearch(category)}>Другой помощник</ActionButton>
+        <ActionButton onClick={() => setStep('chat')}>{text.startChat}</ActionButton>
+        <ActionButton tone="ghost" onClick={() => startSearch(category)}>{text.otherHelper}</ActionButton>
       </PhoneShell>
     );
   }
@@ -408,40 +466,40 @@ export function HomePage() {
       <PhoneShell screenKey={step}>
         <header className="chat-header">
           <div>
-            <h1>{volunteer.name} К.</h1>
-            <p>Проверенный помощник</p>
+            <h1>{volunteer.name} Рљ.</h1>
+            <p>РџСЂРѕРІРµСЂРµРЅРЅС‹Р№ РїРѕРјРѕС‰РЅРёРє</p>
           </div>
-          <button onClick={() => setStep('history')}>История</button>
+          <button onClick={() => setStep('history')}>{text.history}</button>
         </header>
-        <div className="safety-note">Никому не сообщайте пароли, SMS-коды и данные банковской карты. Настоящий помощник никогда не должен их просить.</div>
-        {isCheckingSafety ? <div className="ai-safety ai-safety--checking">ИИ проверяет диалог на мошенничество...</div> : null}
+        <div className="safety-note">РќРёРєРѕРјСѓ РЅРµ СЃРѕРѕР±С‰Р°Р№С‚Рµ РїР°СЂРѕР»Рё, SMS-РєРѕРґС‹ Рё РґР°РЅРЅС‹Рµ Р±Р°РЅРєРѕРІСЃРєРѕР№ РєР°СЂС‚С‹. РќР°СЃС‚РѕСЏС‰РёР№ РїРѕРјРѕС‰РЅРёРє РЅРёРєРѕРіРґР° РЅРµ РґРѕР»Р¶РµРЅ РёС… РїСЂРѕСЃРёС‚СЊ.</div>
+        {isCheckingSafety ? <div className="ai-safety ai-safety--checking">РР РїСЂРѕРІРµСЂСЏРµС‚ РґРёР°Р»РѕРі РЅР° РјРѕС€РµРЅРЅРёС‡РµСЃС‚РІРѕ...</div> : null}
         {aiSafety && aiSafety.risk !== 'safe' ? (
           <div className={`ai-safety ai-safety--${aiSafety.risk}`}>
-            <strong>{aiSafety.action === 'block' ? 'Диалог остановлен' : 'Нужна осторожность'}</strong>
+            <strong>{aiSafety.action === 'block' ? 'Р”РёР°Р»РѕРі РѕСЃС‚Р°РЅРѕРІР»РµРЅ' : 'РќСѓР¶РЅР° РѕСЃС‚РѕСЂРѕР¶РЅРѕСЃС‚СЊ'}</strong>
             <p>{aiSafety.reason}</p>
           </div>
         ) : null}
         {risk ? (
           <div className="warning">
-            <strong>Будьте осторожны</strong>
-            <p>Не сообщайте коды, пароли или банковские данные.</p>
-            <button onClick={() => submitReport('password', 'В чате обнаружен потенциально опасный запрос.')}>Это подозрительно</button>
+            <strong>Р‘СѓРґСЊС‚Рµ РѕСЃС‚РѕСЂРѕР¶РЅС‹</strong>
+            <p>РќРµ СЃРѕРѕР±С‰Р°Р№С‚Рµ РєРѕРґС‹, РїР°СЂРѕР»Рё РёР»Рё Р±Р°РЅРєРѕРІСЃРєРёРµ РґР°РЅРЅС‹Рµ.</p>
+            <button onClick={() => submitReport('password', 'Р’ С‡Р°С‚Рµ РѕР±РЅР°СЂСѓР¶РµРЅ РїРѕС‚РµРЅС†РёР°Р»СЊРЅРѕ РѕРїР°СЃРЅС‹Р№ Р·Р°РїСЂРѕСЃ.')}>{text.suspicious}</button>
           </div>
         ) : null}
-        {blockedChat ? <div className="warning">Разговор остановлен. Этот помощник больше не сможет написать вам в этом чате.</div> : null}
+        {blockedChat ? <div className="warning">Р Р°Р·РіРѕРІРѕСЂ РѕСЃС‚Р°РЅРѕРІР»РµРЅ. Р­С‚РѕС‚ РїРѕРјРѕС‰РЅРёРє Р±РѕР»СЊС€Рµ РЅРµ СЃРјРѕР¶РµС‚ РЅР°РїРёСЃР°С‚СЊ РІР°Рј РІ СЌС‚РѕРј С‡Р°С‚Рµ.</div> : null}
         <div className="chat-list">
           {messages.map((item) => (
             <div key={item.id} className={item.senderId === profile?.id ? 'message message--mine' : 'message'}>
-              {item.messageType === 'photo' && item.fileUrl ? <img className="message-media" src={item.fileUrl} alt={item.fileName ?? 'Фото'} /> : null}
+              {item.messageType === 'photo' && item.fileUrl ? <img className="message-media" src={item.fileUrl} alt={item.fileName ?? 'Р¤РѕС‚Рѕ'} /> : null}
               {item.messageType === 'video' && item.fileUrl ? <video className="message-media" src={item.fileUrl} controls /> : null}
               <p>{item.text}</p>
             </div>
           ))}
         </div>
         <div className="chat-tools">
-          <button disabled={blockedChat} onClick={() => photoInputRef.current?.click()}>Фото</button>
-          <button disabled={blockedChat} onClick={() => sendQuickMedia('voice')}>Голос</button>
-          <button disabled={blockedChat} onClick={() => videoInputRef.current?.click()}>Видео</button>
+          <button disabled={blockedChat} onClick={() => photoInputRef.current?.click()}>{text.photo}</button>
+          <button disabled={blockedChat} onClick={() => sendQuickMedia('voice')}>{text.voice}</button>
+          <button disabled={blockedChat} onClick={() => videoInputRef.current?.click()}>{text.video}</button>
           <input
             ref={photoInputRef}
             className="file-input"
@@ -466,27 +524,28 @@ export function HomePage() {
           />
         </div>
         <div className="chat-input">
-          <input disabled={blockedChat} value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Написать сообщение..." />
-          <button disabled={blockedChat} onClick={sendText}>Отправить</button>
+          <input disabled={blockedChat} value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={text.messagePlaceholder} />
+          <button disabled={blockedChat} onClick={sendText}>{text.send}</button>
         </div>
         <div className="safety-actions">
-          <button onClick={() => setStep('report')}>Пожаловаться</button>
-          <button onClick={() => setStep('unsafe')}>Мне небезопасно</button>
-          <button onClick={blockCurrentVolunteer}>Заблокировать</button>
+          <button onClick={() => setStep('report')}>{text.complaint}</button>
+          <button onClick={() => setStep('unsafe')}>{text.unsafe}</button>
+          <button onClick={blockCurrentVolunteer}>{text.block}</button>
         </div>
-        <ActionButton tone="danger" onClick={completeHelp}>Закончить помощь</ActionButton>
+        <ActionButton tone="danger" onClick={completeHelp}>{text.finishHelp}</ActionButton>
       </PhoneShell>
     );
   }
 
   if (step === 'history') {
-    return <HistoryScreen session={helpSession} volunteer={volunteer} messages={messages} onChat={() => setStep('chat')} onBack={() => setStep('elderHome')} />;
+    return <HistoryScreen language={language} session={helpSession} volunteer={volunteer} messages={messages} onChat={() => setStep('chat')} onBack={() => setStep('elderHome')} />;
   }
 
   if (step === 'report' && volunteer) {
     return (
       <ReportScreen
         reason={reportReason}
+        language={language}
         comment={reportComment}
         onReasonChange={setReportReason}
         onCommentChange={setReportComment}
@@ -499,9 +558,9 @@ export function HomePage() {
   if (step === 'unsafe') {
     return (
       <PhoneShell screenKey={step}>
-        <ScreenHeader title="Вам небезопасно?" subtitle="Можно сразу прекратить помощь и заблокировать пользователя." />
-        <ActionButton tone="danger" onClick={stopUnsafeHelp}>Да, прекратить</ActionButton>
-        <ActionButton tone="ghost" onClick={() => setStep('chat')}>Отмена</ActionButton>
+        <ScreenHeader title="Р’Р°Рј РЅРµР±РµР·РѕРїР°СЃРЅРѕ?" subtitle="РњРѕР¶РЅРѕ СЃСЂР°Р·Сѓ РїСЂРµРєСЂР°С‚РёС‚СЊ РїРѕРјРѕС‰СЊ Рё Р·Р°Р±Р»РѕРєРёСЂРѕРІР°С‚СЊ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ." />
+        <ActionButton tone="danger" onClick={stopUnsafeHelp}>{text.yesStop}</ActionButton>
+        <ActionButton tone="ghost" onClick={() => setStep('chat')}>{text.cancel}</ActionButton>
       </PhoneShell>
     );
   }
@@ -509,12 +568,12 @@ export function HomePage() {
   if (step === 'blocked') {
     return (
       <PhoneShell screenKey={step}>
-        <ScreenHeader title="Пользователь заблокирован" subtitle="Разговор остановлен. Жалоба отправлена на проверку." />
+        <ScreenHeader title="РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ Р·Р°Р±Р»РѕРєРёСЂРѕРІР°РЅ" subtitle="Р Р°Р·РіРѕРІРѕСЂ РѕСЃС‚Р°РЅРѕРІР»РµРЅ. Р–Р°Р»РѕР±Р° РѕС‚РїСЂР°РІР»РµРЅР° РЅР° РїСЂРѕРІРµСЂРєСѓ." />
         <div className="info-list">
-          <p>Вы можете вернуться на главный экран и найти другого помощника.</p>
-          <p>Пароли, SMS-коды и банковские данные никому сообщать нельзя.</p>
+          <p>Р’С‹ РјРѕР¶РµС‚Рµ РІРµСЂРЅСѓС‚СЊСЃСЏ РЅР° РіР»Р°РІРЅС‹Р№ СЌРєСЂР°РЅ Рё РЅР°Р№С‚Рё РґСЂСѓРіРѕРіРѕ РїРѕРјРѕС‰РЅРёРєР°.</p>
+          <p>РџР°СЂРѕР»Рё, SMS-РєРѕРґС‹ Рё Р±Р°РЅРєРѕРІСЃРєРёРµ РґР°РЅРЅС‹Рµ РЅРёРєРѕРјСѓ СЃРѕРѕР±С‰Р°С‚СЊ РЅРµР»СЊР·СЏ.</p>
         </div>
-        <ActionButton onClick={() => setStep('elderHome')}>На главный экран</ActionButton>
+        <ActionButton onClick={() => setStep('elderHome')}>{text.home}</ActionButton>
       </PhoneShell>
     );
   }
@@ -522,12 +581,12 @@ export function HomePage() {
   if (step === 'rating') {
     return (
       <PhoneShell screenKey={step}>
-        <ScreenHeader title="Спасибо" subtitle="Оцените работу помощника." />
+        <ScreenHeader title="РЎРїР°СЃРёР±Рѕ" subtitle="РћС†РµРЅРёС‚Рµ СЂР°Р±РѕС‚Сѓ РїРѕРјРѕС‰РЅРёРєР°." />
         <div className="rating-scale">
           {[1, 2, 3, 4, 5].map((star) => <button key={star} onClick={() => setRating(star)} className={star <= rating ? 'active' : ''}>{star}</button>)}
         </div>
-        <ActionButton onClick={finishRating}>Готово</ActionButton>
-        <ActionButton tone="ghost" onClick={() => setStep('safety')}>Пожаловаться</ActionButton>
+        <ActionButton onClick={finishRating}>{text.done}</ActionButton>
+        <ActionButton tone="ghost" onClick={() => setStep('safety')}>{text.complaint}</ActionButton>
       </PhoneShell>
     );
   }
@@ -543,30 +602,30 @@ export function HomePage() {
       <PhoneShell screenKey={step}>
         <header className="top-bar">
           <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />KOMEK</strong>
-          <button onClick={() => setStep('admin')}>Профиль</button>
+          <button onClick={() => setStep('admin')}>{text.profile}</button>
         </header>
-        <ScreenHeader title={`Здравствуйте, ${profile?.name ?? 'Алия'}`} subtitle="Статус помощи" />
+        <ScreenHeader title={`Р—РґСЂР°РІСЃС‚РІСѓР№С‚Рµ, ${profile?.name ?? 'РђР»РёСЏ'}`} subtitle="РЎС‚Р°С‚СѓСЃ РїРѕРјРѕС‰Рё" />
         <section className="status-card">
           <div>
-            <p className="eyebrow">Готовность</p>
-            <h2>Готова помогать</h2>
-            <p>Вы будете получать запросы, когда кому-то понадобится помощь.</p>
+            <p className="eyebrow">Р“РѕС‚РѕРІРЅРѕСЃС‚СЊ</p>
+            <h2>Р“РѕС‚РѕРІР° РїРѕРјРѕРіР°С‚СЊ</h2>
+            <p>Р’С‹ Р±СѓРґРµС‚Рµ РїРѕР»СѓС‡Р°С‚СЊ Р·Р°РїСЂРѕСЃС‹, РєРѕРіРґР° РєРѕРјСѓ-С‚Рѕ РїРѕРЅР°РґРѕР±РёС‚СЃСЏ РїРѕРјРѕС‰СЊ.</p>
           </div>
           <span>ON</span>
         </section>
         <div className="stats">
-          <b><span>{helped}</span>помощи</b>
-          <b><span>{volunteerStats?.rating ?? demoStats?.rating ?? 4.9}</span>оценка</b>
+          <b><span>{helped}</span>РїРѕРјРѕС‰Рё</b>
+          <b><span>{volunteerStats?.rating ?? demoStats?.rating ?? 4.9}</span>РѕС†РµРЅРєР°</b>
           <b><span>{xp}</span>XP</b>
         </div>
         <section className="level-card">
           <p>LEVEL {String(level).padStart(2, '0')}</p>
-          <h2>{volunteerStats?.title ?? demoStats?.title ?? 'Надежный помощник'}</h2>
+          <h2>{volunteerStats?.title ?? demoStats?.title ?? 'РќР°РґРµР¶РЅС‹Р№ РїРѕРјРѕС‰РЅРёРє'}</h2>
           <div className="progress"><span style={{ width: `${Math.min(100, (xp % 1000) / 10)}%` }} /></div>
           <small>{xp} / 1000 XP</small>
         </section>
-        <ActionButton onClick={() => setStep('incoming')}>Показать запрос</ActionButton>
-        <BottomNav items={['Помощь', 'Прогресс', 'Профиль']} onSecond={() => setStep('volunteerProfile')} onThird={() => setStep('admin')} />
+        <ActionButton onClick={() => setStep('incoming')}>{text.showRequest}</ActionButton>
+        <BottomNav items={[text.help, text.progress, text.profile]} onSecond={() => setStep('volunteerProfile')} onThird={() => setStep('admin')} />
       </PhoneShell>
     );
   }
@@ -574,9 +633,9 @@ export function HomePage() {
   if (step === 'incoming') {
     return (
       <PhoneShell screenKey={step}>
-        <ScreenHeader title="Новый запрос" subtitle="Пользователю нужна помощь в чате." />
-        <ActionButton onClick={acceptIncomingRequest}>Принять</ActionButton>
-        <ActionButton tone="ghost" onClick={() => setStep('volunteerHome')}>Не могу сейчас</ActionButton>
+        <ScreenHeader title="РќРѕРІС‹Р№ Р·Р°РїСЂРѕСЃ" subtitle="РџРѕР»СЊР·РѕРІР°С‚РµР»СЋ РЅСѓР¶РЅР° РїРѕРјРѕС‰СЊ РІ С‡Р°С‚Рµ." />
+        <ActionButton onClick={acceptIncomingRequest}>{text.accept}</ActionButton>
+        <ActionButton tone="ghost" onClick={() => setStep('volunteerHome')}>{text.notNow}</ActionButton>
       </PhoneShell>
     );
   }
@@ -589,7 +648,13 @@ export function HomePage() {
         stats={volunteerStats}
         achievements={visibleAchievements}
         themeMode={themeMode}
+        fontMode={fontMode}
+        soundEnabled={soundEnabled}
+        language={language}
         onThemeChange={setThemeMode}
+        onFontChange={setFontMode}
+        onSoundChange={setSoundEnabled}
+        onLanguageChange={setLanguage}
         onSignOut={signOutApp}
         onBack={() => setStep(role === 'elder' ? 'elderHome' : 'volunteerHome')}
       />
@@ -621,49 +686,52 @@ function BottomNav({ items, onSecond, onThird }: { items: string[]; onSecond: ()
 }
 
 function HistoryScreen({
+  language,
   session,
   volunteer,
   messages,
   onChat,
   onBack,
 }: {
+  language: Language;
   session?: HelpSession;
   volunteer?: Volunteer;
   messages: ChatMessage[];
   onChat: () => void;
   onBack: () => void;
 }) {
-  const sessionDate = session ? new Date(session.startedAt).toLocaleDateString('ru-RU') : 'Сегодня';
+  const sessionDate = session ? new Date(session.startedAt).toLocaleDateString('ru-RU') : 'РЎРµРіРѕРґРЅСЏ';
   return (
     <PhoneShell screenKey="history">
-      <ScreenHeader title="Мои помощи" subtitle="Текущие и завершенные обращения." />
+      <ScreenHeader title="РњРѕРё РїРѕРјРѕС‰Рё" subtitle="РўРµРєСѓС‰РёРµ Рё Р·Р°РІРµСЂС€РµРЅРЅС‹Рµ РѕР±СЂР°С‰РµРЅРёСЏ." />
       <div className="history-list">
         {session && volunteer ? (
           <button className="history-item" onClick={onChat}>
-            <span>{session.status === 'completed' ? 'Завершено' : 'Сейчас'}</span>
-            <strong>{volunteer.name} К.</strong>
-            <p>{sessionDate} · {messages.length} сообщений</p>
+            <span>{session.status === 'completed' ? 'Р—Р°РІРµСЂС€РµРЅРѕ' : 'РЎРµР№С‡Р°СЃ'}</span>
+            <strong>{volunteer.name} Рљ.</strong>
+            <p>{sessionDate} В· {messages.length} СЃРѕРѕР±С‰РµРЅРёР№</p>
           </button>
         ) : (
           <div className="history-item">
-            <span>Пока пусто</span>
-            <strong>Здесь появятся ваши обращения</strong>
-            <p>После поиска помощника чат можно будет открыть снова.</p>
+            <span>РџРѕРєР° РїСѓСЃС‚Рѕ</span>
+            <strong>Р—РґРµСЃСЊ РїРѕСЏРІСЏС‚СЃСЏ РІР°С€Рё РѕР±СЂР°С‰РµРЅРёСЏ</strong>
+            <p>РџРѕСЃР»Рµ РїРѕРёСЃРєР° РїРѕРјРѕС‰РЅРёРєР° С‡Р°С‚ РјРѕР¶РЅРѕ Р±СѓРґРµС‚ РѕС‚РєСЂС‹С‚СЊ СЃРЅРѕРІР°.</p>
           </div>
         )}
         <div className="history-item">
-          <span>Пример</span>
-          <strong>Помощь с телефоном</strong>
-          <p>Недавний чат · завершено</p>
+          <span>РџСЂРёРјРµСЂ</span>
+          <strong>РџРѕРјРѕС‰СЊ СЃ С‚РµР»РµС„РѕРЅРѕРј</strong>
+          <p>РќРµРґР°РІРЅРёР№ С‡Р°С‚ В· Р·Р°РІРµСЂС€РµРЅРѕ</p>
         </div>
       </div>
-      <ActionButton onClick={onBack}>Назад</ActionButton>
+      <ActionButton onClick={onBack}>{uiText[language].back}</ActionButton>
     </PhoneShell>
   );
 }
 
 function ReportScreen({
   reason,
+  language,
   comment,
   onReasonChange,
   onCommentChange,
@@ -671,6 +739,7 @@ function ReportScreen({
   onBack,
 }: {
   reason: ReportReason;
+  language: Language;
   comment: string;
   onReasonChange: (reason: ReportReason) => void;
   onCommentChange: (comment: string) => void;
@@ -678,19 +747,19 @@ function ReportScreen({
   onBack: () => void;
 }) {
   const reasons: Array<{ id: ReportReason; label: string }> = [
-    { id: 'trolling', label: 'Оскорбления или троллинг' },
-    { id: 'money', label: 'Просит деньги' },
-    { id: 'password', label: 'Просит пароль или SMS-код' },
-    { id: 'bank_data', label: 'Просит банковские данные' },
-    { id: 'suspicious_app', label: 'Просит установить подозрительное приложение' },
-    { id: 'suspicious_content', label: 'Отправляет подозрительный контент' },
-    { id: 'bad_behavior', label: 'Неприемлемое поведение' },
-    { id: 'other', label: 'Другое' },
+    { id: 'trolling', label: 'РћСЃРєРѕСЂР±Р»РµРЅРёСЏ РёР»Рё С‚СЂРѕР»Р»РёРЅРі' },
+    { id: 'money', label: 'РџСЂРѕСЃРёС‚ РґРµРЅСЊРіРё' },
+    { id: 'password', label: 'РџСЂРѕСЃРёС‚ РїР°СЂРѕР»СЊ РёР»Рё SMS-РєРѕРґ' },
+    { id: 'bank_data', label: 'РџСЂРѕСЃРёС‚ Р±Р°РЅРєРѕРІСЃРєРёРµ РґР°РЅРЅС‹Рµ' },
+    { id: 'suspicious_app', label: 'РџСЂРѕСЃРёС‚ СѓСЃС‚Р°РЅРѕРІРёС‚СЊ РїРѕРґРѕР·СЂРёС‚РµР»СЊРЅРѕРµ РїСЂРёР»РѕР¶РµРЅРёРµ' },
+    { id: 'suspicious_content', label: 'РћС‚РїСЂР°РІР»СЏРµС‚ РїРѕРґРѕР·СЂРёС‚РµР»СЊРЅС‹Р№ РєРѕРЅС‚РµРЅС‚' },
+    { id: 'bad_behavior', label: 'РќРµРїСЂРёРµРјР»РµРјРѕРµ РїРѕРІРµРґРµРЅРёРµ' },
+    { id: 'other', label: 'Р”СЂСѓРіРѕРµ' },
   ];
 
   return (
     <PhoneShell screenKey="report">
-      <ScreenHeader title="Пожаловаться" subtitle="Выберите причину и добавьте короткий комментарий." />
+      <ScreenHeader title="РџРѕР¶Р°Р»РѕРІР°С‚СЊСЃСЏ" subtitle="Р’С‹Р±РµСЂРёС‚Рµ РїСЂРёС‡РёРЅСѓ Рё РґРѕР±Р°РІСЊС‚Рµ РєРѕСЂРѕС‚РєРёР№ РєРѕРјРјРµРЅС‚Р°СЂРёР№." />
       <div className="report-options">
         {reasons.map((item) => (
           <button key={item.id} className={item.id === reason ? 'active' : ''} onClick={() => onReasonChange(item.id)}>
@@ -698,9 +767,9 @@ function ReportScreen({
           </button>
         ))}
       </div>
-      <textarea className="report-comment" value={comment} onChange={(event) => onCommentChange(event.target.value)} placeholder="Короткий комментарий..." />
-      <ActionButton onClick={onSubmit}>Отправить жалобу</ActionButton>
-      <ActionButton tone="ghost" onClick={onBack}>Назад</ActionButton>
+      <textarea className="report-comment" value={comment} onChange={(event) => onCommentChange(event.target.value)} placeholder="РљРѕСЂРѕС‚РєРёР№ РєРѕРјРјРµРЅС‚Р°СЂРёР№..." />
+      <ActionButton onClick={onSubmit}>{uiText[language].submitReport}</ActionButton>
+      <ActionButton tone="ghost" onClick={onBack}>{uiText[language].back}</ActionButton>
     </PhoneShell>
   );
 }
@@ -710,7 +779,13 @@ function InfoScreen({
   stats,
   achievements,
   themeMode,
+  fontMode,
+  soundEnabled,
+  language,
   onThemeChange,
+  onFontChange,
+  onSoundChange,
+  onLanguageChange,
   onSignOut,
   onBack,
 }: {
@@ -719,34 +794,70 @@ function InfoScreen({
   stats: VolunteerProfileRow | null;
   achievements: Achievement[];
   themeMode: ThemeMode;
+  fontMode: FontMode;
+  soundEnabled: boolean;
+  language: Language;
   onThemeChange: (theme: ThemeMode) => void;
+  onFontChange: (font: FontMode) => void;
+  onSoundChange: (enabled: boolean) => void;
+  onLanguageChange: (language: Language) => void;
   onSignOut: () => void;
   onBack: () => void;
 }) {
-  const title = step === 'admin' ? 'Профиль' : step === 'volunteerProfile' ? 'Прогресс' : 'Безопасность';
+  const title = step === 'admin' ? 'РџСЂРѕС„РёР»СЊ' : step === 'volunteerProfile' ? 'РџСЂРѕРіСЂРµСЃСЃ' : 'Р‘РµР·РѕРїР°СЃРЅРѕСЃС‚СЊ';
   const reports = getSafetyReports();
   return (
     <PhoneShell screenKey={step}>
-      <ScreenHeader title={title} subtitle={profile ? `${profile.name} · ${profile.city ?? 'город не указан'}` : undefined} />
+      <ScreenHeader title={title} subtitle={profile ? `${profile.name} В· ${profile.city ?? 'РіРѕСЂРѕРґ РЅРµ СѓРєР°Р·Р°РЅ'}` : undefined} />
       <div className="info-list">
-        {step === 'safety' ? <p>Никому не сообщайте пароль, SMS-код, PIN или банковские данные.</p> : null}
-        {step === 'safety' ? <p>Если разговор вызывает сомнения, завершите помощь и отправьте жалобу.</p> : null}
-        {step === 'admin' ? <p>Роль сохранена в Supabase: {profile?.role === 'elder' ? 'получаю помощь' : 'помогаю'}.</p> : null}
-        {step === 'admin' ? <p>Модерация: {reports.length} жалоб в очереди, {reports.filter((item) => item.severity === 'high').length} высокого риска.</p> : null}
+        {step === 'safety' ? <p>РќРёРєРѕРјСѓ РЅРµ СЃРѕРѕР±С‰Р°Р№С‚Рµ РїР°СЂРѕР»СЊ, SMS-РєРѕРґ, PIN РёР»Рё Р±Р°РЅРєРѕРІСЃРєРёРµ РґР°РЅРЅС‹Рµ.</p> : null}
+        {step === 'safety' ? <p>Р•СЃР»Рё СЂР°Р·РіРѕРІРѕСЂ РІС‹Р·С‹РІР°РµС‚ СЃРѕРјРЅРµРЅРёСЏ, Р·Р°РІРµСЂС€РёС‚Рµ РїРѕРјРѕС‰СЊ Рё РѕС‚РїСЂР°РІСЊС‚Рµ Р¶Р°Р»РѕР±Сѓ.</p> : null}
+        {step === 'admin' ? <p>Р РѕР»СЊ СЃРѕС…СЂР°РЅРµРЅР° РІ Supabase: {profile?.role === 'elder' ? 'РїРѕР»СѓС‡Р°СЋ РїРѕРјРѕС‰СЊ' : 'РїРѕРјРѕРіР°СЋ'}.</p> : null}
+        {step === 'admin' ? <p>РњРѕРґРµСЂР°С†РёСЏ: {reports.length} Р¶Р°Р»РѕР± РІ РѕС‡РµСЂРµРґРё, {reports.filter((item) => item.severity === 'high').length} РІС‹СЃРѕРєРѕРіРѕ СЂРёСЃРєР°.</p> : null}
         {step === 'safety' ? (
           <div className="settings-group">
-            <strong>Тема приложения</strong>
-            <div className="theme-toggle" role="group" aria-label="Тема приложения">
-              <button className={themeMode === 'light' ? 'active' : ''} onClick={() => onThemeChange('light')}>По умолчанию</button>
-              <button className={themeMode === 'dark' ? 'active' : ''} onClick={() => onThemeChange('dark')}>Тёмная</button>
+            <strong>{uiText[language].theme}</strong>
+            <div className="theme-toggle" role="group" aria-label={uiText[language].theme}>
+              <button className={themeMode === 'light' ? 'active' : ''} onClick={() => onThemeChange('light')}>{uiText[language].defaultTheme}</button>
+              <button className={themeMode === 'dark' ? 'active' : ''} onClick={() => onThemeChange('dark')}>{uiText[language].darkTheme}</button>
             </div>
           </div>
         ) : null}
-        {step === 'volunteerProfile' && stats ? <p>{stats.rating} рейтинг · {stats.xp} XP · {stats.people_helped} помощи · {stats.thanks_received} благодарностей</p> : null}
+        {step === 'safety' ? (
+          <div className="settings-group">
+            <strong>{uiText[language].textSize}</strong>
+            <div className="theme-toggle" role="group" aria-label={uiText[language].textSize}>
+              <button className={fontMode === 'normal' ? 'active' : ''} onClick={() => onFontChange('normal')}>{uiText[language].normalText}</button>
+              <button className={fontMode === 'large' ? 'active' : ''} onClick={() => onFontChange('large')}>{uiText[language].largeText}</button>
+            </div>
+          </div>
+        ) : null}
+        {step === 'safety' ? (
+          <div className="settings-group">
+            <strong>{uiText[language].sound}</strong>
+            <div className="theme-toggle" role="group" aria-label={uiText[language].sound}>
+              <button className={soundEnabled ? 'active' : ''} onClick={() => onSoundChange(true)}>{uiText[language].soundOn}</button>
+              <button className={!soundEnabled ? 'active' : ''} onClick={() => onSoundChange(false)}>{uiText[language].soundOff}</button>
+            </div>
+          </div>
+        ) : null}
+        {step === 'safety' ? (
+          <div className="settings-group">
+            <strong>{uiText[language].language}</strong>
+            <div className="language-toggle" role="group" aria-label={uiText[language].language}>
+              {(['ru', 'kk', 'en'] as const).map((item) => (
+                <button key={item} className={language === item ? 'active' : ''} onClick={() => onLanguageChange(item)}>
+                  {languageNames[item]}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+        {step === 'volunteerProfile' && stats ? <p>{stats.rating} СЂРµР№С‚РёРЅРі В· {stats.xp} XP В· {stats.people_helped} РїРѕРјРѕС‰Рё В· {stats.thanks_received} Р±Р»Р°РіРѕРґР°СЂРЅРѕСЃС‚РµР№</p> : null}
         {step === 'volunteerProfile' ? achievements.map((item) => <p key={item.id}><b>{item.name}</b><br />{item.description}</p>) : null}
       </div>
-      <ActionButton onClick={onBack}>Назад</ActionButton>
-      <ActionButton tone="ghost" onClick={onSignOut}>Выйти из аккаунта</ActionButton>
+      <ActionButton onClick={onBack}>{uiText[language].back}</ActionButton>
+      <ActionButton tone="ghost" onClick={onSignOut}>{uiText[language].signOut}</ActionButton>
     </PhoneShell>
   );
 }

@@ -91,6 +91,10 @@ button, input { font: inherit; }
   color: var(--muted);
   padding: 0 14px;
   font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(39, 35, 38, 0.06);
+  transform: translateY(0);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
 }
 
 .screen-header { display: grid; gap: 8px; }
@@ -211,6 +215,9 @@ button, input { font: inherit; }
   font-size: 20px;
   font-weight: 760;
   letter-spacing: 0;
+  box-shadow: 0 12px 26px rgba(39, 35, 38, 0.10);
+  transform: translateY(0);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease, border-color 0.18s ease, background 0.18s ease;
 }
 .action-button--primary, .submit-button {
   background: var(--primary);
@@ -228,6 +235,39 @@ button, input { font: inherit; }
   background: #fff;
   color: var(--ink);
   border: 1px solid var(--line);
+}
+.action-button:hover,
+.tile-button:hover,
+.submit-button:hover,
+.top-bar button:hover,
+.chat-header button:hover,
+.chat-tools button:hover,
+.chat-input button:hover,
+.safety-actions button:hover,
+.report-options button:hover,
+.rating-scale button:hover,
+.bottom-nav button:hover,
+.theme-toggle button:hover,
+.language-toggle button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 34px rgba(39, 35, 38, 0.14);
+  filter: brightness(1.02);
+}
+.action-button:active,
+.tile-button:active,
+.submit-button:active,
+.top-bar button:active,
+.chat-header button:active,
+.chat-tools button:active,
+.chat-input button:active,
+.safety-actions button:active,
+.report-options button:active,
+.rating-scale button:active,
+.bottom-nav button:active,
+.theme-toggle button:active,
+.language-toggle button:active {
+  transform: translateY(1px) scale(0.99);
+  box-shadow: 0 8px 18px rgba(39, 35, 38, 0.10);
 }
 
 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -644,6 +684,10 @@ input {
   background: #fff;
   color: var(--muted);
   font-weight: 760;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(39, 35, 38, 0.06);
+  transform: translateY(0);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
 }
 
 .ad-slot {
@@ -670,23 +714,63 @@ input {
   color: var(--ink);
   font-size: 18px;
 }
-.theme-toggle {
+.theme-toggle,
+.language-toggle {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
-.theme-toggle button {
+.language-toggle {
+  grid-template-columns: repeat(3, 1fr);
+}
+.theme-toggle button,
+.language-toggle button {
   min-height: 52px;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--card);
   color: var(--muted);
   font-weight: 800;
+  box-shadow: 0 8px 18px rgba(39, 35, 38, 0.06);
+  cursor: pointer;
+  transform: translateY(0);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease;
 }
-.theme-toggle button.active {
+.theme-toggle button.active,
+.language-toggle button.active {
   border-color: var(--primary);
   background: var(--accent-soft);
   color: var(--primary-dark);
+  box-shadow: 0 10px 24px rgba(184, 92, 120, 0.13);
+}
+
+:root[data-font-size="large"] .screen-header h1,
+:root[data-font-size="large"] .home-panel h1,
+:root[data-font-size="large"] .center-screen h1 {
+  font-size: 39px;
+}
+:root[data-font-size="large"] .screen-header p,
+:root[data-font-size="large"] .center-screen p,
+:root[data-font-size="large"] .volunteer-card p,
+:root[data-font-size="large"] .info-list p,
+:root[data-font-size="large"] .home-panel p,
+:root[data-font-size="large"] .trust-note p,
+:root[data-font-size="large"] .status-card p {
+  font-size: 21px;
+}
+:root[data-font-size="large"] .action-button,
+:root[data-font-size="large"] .tile-button,
+:root[data-font-size="large"] .theme-toggle button,
+:root[data-font-size="large"] input,
+:root[data-font-size="large"] .report-comment,
+:root[data-font-size="large"] .chat-input button,
+:root[data-font-size="large"] .bottom-nav button {
+  font-size: 19px;
+}
+:root[data-font-size="large"] .eyebrow,
+:root[data-font-size="large"] .ad-slot,
+:root[data-font-size="large"] .status-pill {
+  font-size: 16px;
 }
 
 :root[data-theme="dark"] .top-bar button,
