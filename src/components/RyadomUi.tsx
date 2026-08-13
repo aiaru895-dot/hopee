@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { uiText, type Language } from '../lib/i18n';
 
 type ActionButtonProps = {
   children: ReactNode;
@@ -7,7 +8,7 @@ type ActionButtonProps = {
   disabled?: boolean;
 };
 
-export function PhoneShell({ children, screenKey = 'static' }: { children: ReactNode; screenKey?: string }) {
+export function PhoneShell({ children, screenKey = 'static', language = 'ru' }: { children: ReactNode; screenKey?: string; language?: Language }) {
   return (
     <main className="app-shell">
       <section className="phone-shell">
@@ -15,7 +16,7 @@ export function PhoneShell({ children, screenKey = 'static' }: { children: React
           {children}
         </div>
         <div className="ad-slot">
-          <span>Место для рекламы</span>
+          <span>{uiText[language].ad}</span>
         </div>
       </section>
     </main>

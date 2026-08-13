@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { AuthPanel } from '../components/AuthPanel';
 import { ActionButton, PhoneShell, ScreenHeader, TileButton } from '../components/RyadomUi';
@@ -22,7 +22,7 @@ import {
 import { createMyProfile, loadMyProfile, loadVolunteerStats, type ProfileRow, type VolunteerProfileRow } from '../lib/ryadomProfile';
 import { supabase } from '../lib/supabase';
 import type { Language } from '../lib/i18n';
-import { languageNames, uiText } from '../lib/i18n';
+import { fixMojibake, languageNames, uiText } from '../lib/i18n';
 import type { Achievement, ChatMessage, HelpCategory, HelpSession, ReportReason, Role, Volunteer } from '../lib/ryadomTypes';
 
 type Step =
@@ -206,13 +206,14 @@ export function HomePage() {
     if (!AudioContextClass) return;
     const context = new AudioContextClass();
     const playPulse = () => {
+      void context.resume();
       const oscillator = context.createOscillator();
       const gain = context.createGain();
       oscillator.type = 'sine';
       oscillator.frequency.setValueAtTime(520, context.currentTime);
       oscillator.frequency.exponentialRampToValueAtTime(760, context.currentTime + 0.12);
       gain.gain.setValueAtTime(0.0001, context.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.035, context.currentTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.075, context.currentTime + 0.02);
       gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.18);
       oscillator.connect(gain);
       gain.connect(context.destination);
@@ -367,7 +368,7 @@ export function HomePage() {
 
   if (step === 'role') {
     return (
-      <PhoneShell screenKey={step}>
+      <PhoneShell screenKey={step} language={language}>
         <ScreenHeader title={text.roleTitle} subtitle={text.roleSubtitle} />
         {message ? <p className="message">{message}</p> : null}
         <div className="stack">
@@ -381,7 +382,7 @@ export function HomePage() {
 
   if (step === 'databaseSetup') {
     return (
-      <PhoneShell screenKey={step}>
+      <PhoneShell screenKey={step} language={language}>
         <ScreenHeader title="РќСѓР¶РЅРѕ РїРѕРґРєР»СЋС‡РёС‚СЊ Р±Р°Р·Сѓ" subtitle="Р’С…РѕРґ СЂР°Р±РѕС‚Р°РµС‚, РЅРѕ С‚Р°Р±Р»РёС†С‹ РїСЂРёР»РѕР¶РµРЅРёСЏ РµС‰Рµ РЅРµ Р·Р°РїРёСЃР°РЅС‹ РІ Supabase." />
         <div className="info-list">
           <p>Р—Р°РїСѓСЃС‚РёС‚Рµ РјРёРіСЂР°С†РёРё Supabase. РџРѕСЃР»Рµ СЌС‚РѕРіРѕ РїСЂРѕС„РёР»СЊ Рё СЃС‚Р°С‚РёСЃС‚РёРєР° Р±СѓРґСѓС‚ СЃРѕС…СЂР°РЅСЏС‚СЊСЃСЏ.</p>
@@ -395,20 +396,20 @@ export function HomePage() {
 
   if (step === 'elderHome') {
     return (
-      <PhoneShell screenKey={step}>
+      <PhoneShell screenKey={step} language={language}>
         <header className="top-bar">
           <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />KOMEK</strong>
           <button onClick={() => setStep('safety')}>{text.settings}</button>
         </header>
         <section className="home-panel">
-          <p className="eyebrow">Р”РѕР±СЂС‹Р№ РґРµРЅСЊ, {profile?.name ?? 'Р’Р°Р»РµРЅС‚РёРЅР°'}</p>
-          <h1>РќСѓР¶РЅР° РїРѕРјРѕС‰СЊ?</h1>
-          <p>РќР°Р№РґРµРј РїСЂРѕРІРµСЂРµРЅРЅРѕРіРѕ С‡РµР»РѕРІРµРєР°, РєРѕС‚РѕСЂС‹Р№ СЃРµР№С‡Р°СЃ РіРѕС‚РѕРІ СЃРїРѕРєРѕР№РЅРѕ РїРѕРјРѕС‡СЊ РІ С‡Р°С‚Рµ.</p>
+          <p className="eyebrow">{text.roleTitle}, {fixMojibake(profile?.name ?? 'Р’Р°Р»РµРЅС‚РёРЅР°')}</p>
+          <h1>{text.needHelp}</h1>
+          <p>{text.intro}</p>
           <ActionButton onClick={() => setStep('category')}>{text.chooseHelp}</ActionButton>
         </section>
         <section className="trust-note">
-          <strong>Р‘РµР·РѕРїР°СЃРЅС‹Р№ СЃРµСЂРІРёСЃ РїРѕРґРґРµСЂР¶РєРё</strong>
-          <p>РџРѕРјРѕС‰РЅРёРєРё РїСЂРѕС…РѕРґСЏС‚ РїСЂРѕРІРµСЂРєСѓ Рё РїРѕРјРѕРіР°СЋС‚ СЃ С‚РµР»РµС„РѕРЅРѕРј, РїСЂРёР»РѕР¶РµРЅРёСЏРјРё, РёРЅС‚РµСЂРЅРµС‚РѕРј Рё РїРѕРІСЃРµРґРЅРµРІРЅС‹РјРё С†РёС„СЂРѕРІС‹РјРё РІРѕРїСЂРѕСЃР°РјРё.</p>
+          <strong>{text.service}</strong>
+          <p>{text.intro}</p>
         </section>
         <BottomNav items={[text.help, text.history, text.settings]} onSecond={() => setStep('history')} onThird={() => setStep('safety')} />
       </PhoneShell>
@@ -417,12 +418,12 @@ export function HomePage() {
 
   if (step === 'category') {
     return (
-      <PhoneShell screenKey={step}>
-        <ScreenHeader title="РЎ С‡РµРј РїРѕРјРѕС‡СЊ?" subtitle="РњРѕР¶РЅРѕ РЅРµ РІС‹Р±РёСЂР°С‚СЊ С‚РµРјСѓ: РјС‹ РЅР°Р№РґРµРј РґРѕСЃС‚СѓРїРЅРѕРіРѕ РїСЂРѕРІРµСЂРµРЅРЅРѕРіРѕ РїРѕРјРѕС‰РЅРёРєР°." />
+      <PhoneShell screenKey={step} language={language}>
+        <ScreenHeader title={text.categoryTitle} subtitle={text.intro} />
         <ActionButton onClick={() => startSearch('any')}>{text.anyHelper}</ActionButton>
         <div className="grid">
           {helpCategories.filter((item) => item.id !== 'any').map((item) => (
-            <TileButton key={item.id} icon="" label={item.label} onClick={() => startSearch(item.id)} />
+            <TileButton key={item.id} icon="" label={fixMojibake(item.label)} onClick={() => startSearch(item.id)} />
           ))}
         </div>
         <ActionButton tone="ghost" onClick={() => setStep('elderHome')}>{text.back}</ActionButton>
@@ -432,12 +433,12 @@ export function HomePage() {
 
   if (step === 'search') {
     return (
-      <PhoneShell screenKey={step}>
+      <PhoneShell screenKey={step} language={language}>
         <section className="center-screen">
           <div className="search-indicator" aria-hidden="true"><span /></div>
-          <p className="eyebrow">РРґРµС‚ РїРѕРёСЃРє</p>
-          <h1>РС‰РµРј РїРѕРјРѕС‰РЅРёРєР°</h1>
-          <p>РџСЂРѕРІРµСЂСЏРµРј РґРѕСЃС‚СѓРїРЅС‹С… Р»СЋРґРµР№ РїРѕ РІР°С€РµР№ С‚РµРјРµ. РћР±С‹С‡РЅРѕ СЌС‚Рѕ Р·Р°РЅРёРјР°РµС‚ РЅРµСЃРєРѕР»СЊРєРѕ СЃРµРєСѓРЅРґ.</p>
+          <p className="eyebrow">{text.searchEyebrow}</p>
+          <h1>{text.searchTitle}</h1>
+          <p>{text.intro}</p>
           <div className="search-steps" aria-hidden="true">
             <span />
             <span />
@@ -451,9 +452,9 @@ export function HomePage() {
 
   if (step === 'found' && volunteer) {
     return (
-      <PhoneShell screenKey={step}>
-        <ScreenHeader title="РџРѕРјРѕС‰РЅРёРє РЅР°Р№РґРµРЅ" subtitle={`РўРµРјР°: ${helpCategories.find((item) => item.id === category)?.label}`} />
-        <VolunteerCard volunteer={volunteer} />
+      <PhoneShell screenKey={step} language={language}>
+        <ScreenHeader title={text.foundTitle} subtitle={`${text.theme}: ${fixMojibake(helpCategories.find((item) => item.id === category)?.label ?? '')}`} />
+        <VolunteerCard volunteer={volunteer} language={language} />
         <ActionButton onClick={() => setStep('chat')}>{text.startChat}</ActionButton>
         <ActionButton tone="ghost" onClick={() => startSearch(category)}>{text.otherHelper}</ActionButton>
       </PhoneShell>
@@ -463,11 +464,11 @@ export function HomePage() {
   if (step === 'chat' && volunteer) {
     const risk = messages.some((item) => hasSafetyRisk(item.text));
     return (
-      <PhoneShell screenKey={step}>
+      <PhoneShell screenKey={step} language={language}>
         <header className="chat-header">
           <div>
-            <h1>{volunteer.name} Рљ.</h1>
-            <p>РџСЂРѕРІРµСЂРµРЅРЅС‹Р№ РїРѕРјРѕС‰РЅРёРє</p>
+            <h1>{fixMojibake(volunteer.name)} K.</h1>
+            <p>{text.verifiedHelper}</p>
           </div>
           <button onClick={() => setStep('history')}>{text.history}</button>
         </header>
@@ -557,7 +558,7 @@ export function HomePage() {
 
   if (step === 'unsafe') {
     return (
-      <PhoneShell screenKey={step}>
+      <PhoneShell screenKey={step} language={language}>
         <ScreenHeader title="Р’Р°Рј РЅРµР±РµР·РѕРїР°СЃРЅРѕ?" subtitle="РњРѕР¶РЅРѕ СЃСЂР°Р·Сѓ РїСЂРµРєСЂР°С‚РёС‚СЊ РїРѕРјРѕС‰СЊ Рё Р·Р°Р±Р»РѕРєРёСЂРѕРІР°С‚СЊ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ." />
         <ActionButton tone="danger" onClick={stopUnsafeHelp}>{text.yesStop}</ActionButton>
         <ActionButton tone="ghost" onClick={() => setStep('chat')}>{text.cancel}</ActionButton>
@@ -567,7 +568,7 @@ export function HomePage() {
 
   if (step === 'blocked') {
     return (
-      <PhoneShell screenKey={step}>
+      <PhoneShell screenKey={step} language={language}>
         <ScreenHeader title="РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ Р·Р°Р±Р»РѕРєРёСЂРѕРІР°РЅ" subtitle="Р Р°Р·РіРѕРІРѕСЂ РѕСЃС‚Р°РЅРѕРІР»РµРЅ. Р–Р°Р»РѕР±Р° РѕС‚РїСЂР°РІР»РµРЅР° РЅР° РїСЂРѕРІРµСЂРєСѓ." />
         <div className="info-list">
           <p>Р’С‹ РјРѕР¶РµС‚Рµ РІРµСЂРЅСѓС‚СЊСЃСЏ РЅР° РіР»Р°РІРЅС‹Р№ СЌРєСЂР°РЅ Рё РЅР°Р№С‚Рё РґСЂСѓРіРѕРіРѕ РїРѕРјРѕС‰РЅРёРєР°.</p>
@@ -580,7 +581,7 @@ export function HomePage() {
 
   if (step === 'rating') {
     return (
-      <PhoneShell screenKey={step}>
+      <PhoneShell screenKey={step} language={language}>
         <ScreenHeader title="РЎРїР°СЃРёР±Рѕ" subtitle="РћС†РµРЅРёС‚Рµ СЂР°Р±РѕС‚Сѓ РїРѕРјРѕС‰РЅРёРєР°." />
         <div className="rating-scale">
           {[1, 2, 3, 4, 5].map((star) => <button key={star} onClick={() => setRating(star)} className={star <= rating ? 'active' : ''}>{star}</button>)}
@@ -599,7 +600,7 @@ export function HomePage() {
     const helped = volunteerStats?.people_helped ?? demoStats?.peopleHelped ?? 0;
 
     return (
-      <PhoneShell screenKey={step}>
+      <PhoneShell screenKey={step} language={language}>
         <header className="top-bar">
           <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />KOMEK</strong>
           <button onClick={() => setStep('admin')}>{text.profile}</button>
@@ -632,7 +633,7 @@ export function HomePage() {
 
   if (step === 'incoming') {
     return (
-      <PhoneShell screenKey={step}>
+      <PhoneShell screenKey={step} language={language}>
         <ScreenHeader title="РќРѕРІС‹Р№ Р·Р°РїСЂРѕСЃ" subtitle="РџРѕР»СЊР·РѕРІР°С‚РµР»СЋ РЅСѓР¶РЅР° РїРѕРјРѕС‰СЊ РІ С‡Р°С‚Рµ." />
         <ActionButton onClick={acceptIncomingRequest}>{text.accept}</ActionButton>
         <ActionButton tone="ghost" onClick={() => setStep('volunteerHome')}>{text.notNow}</ActionButton>
@@ -666,7 +667,7 @@ export function HomePage() {
 
 function LoadingScreen({ title }: { title: string }) {
   return (
-    <PhoneShell screenKey="loading">
+    <PhoneShell screenKey="loading" language="ru">
       <section className="center-screen">
         <div className="search-indicator" aria-hidden="true"><span /></div>
         <h1>{title}</h1>
@@ -807,7 +808,7 @@ function InfoScreen({
   const title = step === 'admin' ? 'РџСЂРѕС„РёР»СЊ' : step === 'volunteerProfile' ? 'РџСЂРѕРіСЂРµСЃСЃ' : 'Р‘РµР·РѕРїР°СЃРЅРѕСЃС‚СЊ';
   const reports = getSafetyReports();
   return (
-    <PhoneShell screenKey={step}>
+    <PhoneShell screenKey={step} language={language}>
       <ScreenHeader title={title} subtitle={profile ? `${profile.name} В· ${profile.city ?? 'РіРѕСЂРѕРґ РЅРµ СѓРєР°Р·Р°РЅ'}` : undefined} />
       <div className="info-list">
         {step === 'safety' ? <p>РќРёРєРѕРјСѓ РЅРµ СЃРѕРѕР±С‰Р°Р№С‚Рµ РїР°СЂРѕР»СЊ, SMS-РєРѕРґ, PIN РёР»Рё Р±Р°РЅРєРѕРІСЃРєРёРµ РґР°РЅРЅС‹Рµ.</p> : null}
