@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js';
 import { AuthPanel } from '../components/AuthPanel';
 import { ActionButton, PhoneShell, ScreenHeader, TileButton } from '../components/RyadomUi';
 import { VolunteerCard } from '../components/VolunteerCard';
+import { analyzeChatSafety, type AiSafetyResult } from '../lib/aiSafety';
 import { achievements, elders, helpCategories } from '../lib/ryadomData';
 import {
   addXP,
@@ -42,6 +43,8 @@ type Step =
   | 'volunteerProfile'
   | 'admin';
 
+type ThemeMode = 'light' | 'dark';
+
 export function HomePage() {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<ProfileRow | null>(null);
@@ -59,6 +62,9 @@ export function HomePage() {
   const [reportReason, setReportReason] = useState<ReportReason>('trolling');
   const [reportComment, setReportComment] = useState('');
   const [blockedChat, setBlockedChat] = useState(false);
+  const [aiSafety, setAiSafety] = useState<AiSafetyResult | null>(null);
+  const [isCheckingSafety, setIsCheckingSafety] = useState(false);
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => (localStorage.getItem('hopee-theme') === 'dark' ? 'dark' : 'light'));
   const searchTimerRef = useRef<number | undefined>(undefined);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const videoInputRef = useRef<HTMLInputElement | null>(null);
@@ -96,6 +102,11 @@ export function HomePage() {
 
   useEffect(() => () => window.clearTimeout(searchTimerRef.current), []);
 
+  useEffect(() => {
+    document.documentElement.dataset.theme = themeMode;
+    localStorage.setItem('hopee-theme', themeMode);
+  }, [themeMode]);
+
   const chooseRole = async (nextRole: Role) => {
     setRole(nextRole);
     if (!session) return;
@@ -128,15 +139,29 @@ export function HomePage() {
       setVolunteer(matched);
       setHelpSession(nextSession);
       setBlockedChat(false);
+      setAiSafety(null);
       setMessages(createStarterMessages(nextSession.id, matched.id));
       setStep('found');
     }, 1800);
   };
 
-  const sendText = () => {
+  const sendText = async () => {
     if (!helpSession || !draft.trim() || blockedChat) return;
-    setMessages((items) => [...items, createMessage(helpSession.id, profile?.id ?? elders[0].id, 'text', draft.trim())]);
+    const nextMessage = createMessage(helpSession.id, profile?.id ?? elders[0].id, 'text', draft.trim());
+    const nextMessages = [...messages, nextMessage];
+    setMessages(nextMessages);
     setDraft('');
+    setIsCheckingSafety(true);
+    const result = await analyzeChatSafety(nextMessages);
+    setAiSafety(result);
+    setIsCheckingSafety(false);
+
+    if (result.action === 'block' && volunteer) {
+      createSafetyReport(helpSession, profile?.id ?? elders[0].id, volunteer.id, 'password', result.reason);
+      blockUser(profile?.id ?? elders[0].id, volunteer.id);
+      setBlockedChat(true);
+      setHelpSession((current) => (current ? { ...current, status: 'reported', endedAt: new Date().toISOString() } : current));
+    }
   };
 
   const sendQuickMedia = (type: ChatMessage['messageType']) => {
@@ -174,6 +199,7 @@ export function HomePage() {
     setVolunteer(matched);
     setHelpSession(nextSession);
     setBlockedChat(false);
+    setAiSafety(null);
     setMessages(createStarterMessages(nextSession.id, profile?.id ?? matched.id));
     setStep('chat');
   };
@@ -240,7 +266,7 @@ export function HomePage() {
     return (
       <PhoneShell>
         <header className="top-bar">
-          <strong>hopee</strong>
+          <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />hopee</strong>
           <button onClick={() => setStep('safety')}>Настройки</button>
         </header>
         <section className="home-panel">
@@ -315,6 +341,13 @@ export function HomePage() {
           <button onClick={() => setStep('history')}>История</button>
         </header>
         <div className="safety-note">Никому не сообщайте пароли, SMS-коды и данные банковской карты. Настоящий помощник никогда не должен их просить.</div>
+        {isCheckingSafety ? <div className="ai-safety ai-safety--checking">ИИ проверяет диалог на мошенничество...</div> : null}
+        {aiSafety && aiSafety.risk !== 'safe' ? (
+          <div className={`ai-safety ai-safety--${aiSafety.risk}`}>
+            <strong>{aiSafety.action === 'block' ? 'Диалог остановлен' : 'Нужна осторожность'}</strong>
+            <p>{aiSafety.reason}</p>
+          </div>
+        ) : null}
         {risk ? (
           <div className="warning">
             <strong>Будьте осторожны</strong>
@@ -436,7 +469,7 @@ export function HomePage() {
     return (
       <PhoneShell>
         <header className="top-bar">
-          <strong>hopee</strong>
+          <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />hopee</strong>
           <button onClick={() => setStep('admin')}>Профиль</button>
         </header>
         <ScreenHeader title={`Здравствуйте, ${profile?.name ?? 'Алия'}`} subtitle="Статус помощи" />
@@ -476,7 +509,17 @@ export function HomePage() {
   }
 
   if (step === 'safety' || step === 'volunteerProfile' || step === 'admin') {
-    return <InfoScreen step={step} profile={profile} stats={volunteerStats} achievements={visibleAchievements} onBack={() => setStep(role === 'elder' ? 'elderHome' : 'volunteerHome')} />;
+    return (
+      <InfoScreen
+        step={step}
+        profile={profile}
+        stats={volunteerStats}
+        achievements={visibleAchievements}
+        themeMode={themeMode}
+        onThemeChange={setThemeMode}
+        onBack={() => setStep(role === 'elder' ? 'elderHome' : 'volunteerHome')}
+      />
+    );
   }
 
   return null;
@@ -592,12 +635,16 @@ function InfoScreen({
   profile,
   stats,
   achievements,
+  themeMode,
+  onThemeChange,
   onBack,
 }: {
   step: Step;
   profile: ProfileRow | null;
   stats: VolunteerProfileRow | null;
   achievements: Achievement[];
+  themeMode: ThemeMode;
+  onThemeChange: (theme: ThemeMode) => void;
   onBack: () => void;
 }) {
   const title = step === 'admin' ? 'Профиль' : step === 'volunteerProfile' ? 'Прогресс' : 'Безопасность';
@@ -610,11 +657,20 @@ function InfoScreen({
         {step === 'safety' ? <p>Если разговор вызывает сомнения, завершите помощь и отправьте жалобу.</p> : null}
         {step === 'admin' ? <p>Роль сохранена в Supabase: {profile?.role === 'elder' ? 'получаю помощь' : 'помогаю'}.</p> : null}
         {step === 'admin' ? <p>Модерация: {reports.length} жалоб в очереди, {reports.filter((item) => item.severity === 'high').length} высокого риска.</p> : null}
+        {step === 'safety' ? (
+          <div className="settings-group">
+            <strong>Тема приложения</strong>
+            <div className="theme-toggle" role="group" aria-label="Тема приложения">
+              <button className={themeMode === 'light' ? 'active' : ''} onClick={() => onThemeChange('light')}>По умолчанию</button>
+              <button className={themeMode === 'dark' ? 'active' : ''} onClick={() => onThemeChange('dark')}>Тёмная</button>
+            </div>
+          </div>
+        ) : null}
         {step === 'volunteerProfile' && stats ? <p>{stats.rating} рейтинг · {stats.xp} XP · {stats.people_helped} помощи · {stats.thanks_received} благодарностей</p> : null}
         {step === 'volunteerProfile' ? achievements.map((item) => <p key={item.id}><b>{item.name}</b><br />{item.description}</p>) : null}
       </div>
       <ActionButton onClick={onBack}>Назад</ActionButton>
-      <ActionButton tone="ghost" onClick={() => supabase.auth.signOut()}>Выйти</ActionButton>
+      <ActionButton tone="ghost" onClick={() => supabase.auth.signOut()}>Выйти из аккаунта</ActionButton>
     </PhoneShell>
   );
 }

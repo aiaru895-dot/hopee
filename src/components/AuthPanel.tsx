@@ -43,9 +43,7 @@ export function AuthPanel() {
   return (
     <PhoneShell>
       <section className="login-hero">
-        <div className="brand-symbol" aria-hidden="true">
-          <span />
-        </div>
+        <img className="brand-symbol brand-symbol--hero" src="/app-icon.svg" alt="" aria-hidden="true" />
         <p className="eyebrow">Сервис поддержки</p>
         <h1>hopee</h1>
         <p>Безопасная помощь с телефоном и повседневными цифровыми вопросами.</p>

@@ -39,9 +39,10 @@ Deno.serve(async (req) => {
       return json({ error: 'AI пока не настроен. Попроси наставника проверить секрет.' }, 503);
     }
 
-    const body = (await req.json()) as { prompt?: unknown; system?: unknown };
+    const body = (await req.json()) as { prompt?: unknown; system?: unknown; mode?: unknown };
     const prompt = typeof body.prompt === 'string' ? body.prompt.trim() : '';
     const system = typeof body.system === 'string' ? body.system.trim() : '';
+    const mode = body.mode === 'moderate' ? 'moderate' : 'chat';
 
     if (!prompt) return json({ error: 'Напиши запрос для AI.' }, 400);
     if (prompt.length > 10_000 || system.length > 5_000) {
@@ -56,6 +57,12 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           systemInstruction: system ? { parts: [{ text: system }] } : undefined,
           contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: mode === 'moderate'
+            ? {
+              temperature: 0,
+              responseMimeType: 'application/json',
+            }
+            : undefined,
         }),
       },
     );

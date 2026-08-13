@@ -16,6 +16,25 @@
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: var(--ink);
   background: var(--bg);
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --bg: #171315;
+  --panel: #211c1f;
+  --card: #2a2428;
+  --ink: #f7eeee;
+  --muted: #c5b8be;
+  --primary: #d27a95;
+  --primary-dark: #f0a8ba;
+  --accent-soft: #3a2730;
+  --accent-line: #68414e;
+  --line: #42363d;
+  --safe: #9ed0b4;
+  --safe-bg: #21372b;
+  --danger: #ffaaa3;
+  --danger-bg: #3c2423;
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -52,6 +71,9 @@ button, input { font: inherit; }
   color: var(--ink);
   font-size: 20px;
   font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 .top-bar button, .chat-header button {
   min-height: 44px;
@@ -109,29 +131,21 @@ button, input { font: inherit; }
 .brand-symbol {
   width: 82px;
   height: 82px;
-  border: 1px solid var(--accent-line);
-  border-radius: 16px;
-  background: var(--accent-soft);
-  display: grid;
-  place-items: center;
+  border-radius: 18px;
+  display: block;
+  object-fit: contain;
+  box-shadow: 0 16px 42px rgba(184, 92, 120, 0.18);
 }
-.brand-symbol span {
-  width: 34px;
-  height: 34px;
-  border: 3px solid var(--primary);
-  border-radius: 50%;
-  position: relative;
+.brand-symbol--hero {
+  width: 112px;
+  height: 112px;
+  animation: brand-float 3.4s ease-in-out infinite;
 }
-.brand-symbol span::after {
-  content: "";
-  position: absolute;
-  right: -9px;
-  bottom: 2px;
-  width: 16px;
-  height: 3px;
-  border-radius: 999px;
-  background: var(--primary);
-  transform: rotate(45deg);
+.brand-mark {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  object-fit: contain;
 }
 
 .home-panel {
@@ -332,6 +346,33 @@ button, input { font: inherit; }
   color: var(--muted);
   font-size: 15px;
   line-height: 1.45;
+}
+.ai-safety {
+  border: 1px solid var(--accent-line);
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--safe-bg);
+  color: var(--safe);
+  font-size: 15px;
+  line-height: 1.45;
+}
+.ai-safety strong {
+  display: block;
+  margin-bottom: 4px;
+}
+.ai-safety p {
+  margin: 0;
+  color: inherit;
+}
+.ai-safety--warning,
+.ai-safety--high {
+  border-color: #f0d0cc;
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+.ai-safety--checking {
+  color: var(--muted);
+  background: var(--card);
 }
 
 .chat-header {
@@ -582,6 +623,56 @@ input {
   opacity: 0.76;
 }
 
+.settings-group {
+  display: grid;
+  gap: 10px;
+}
+.settings-group strong {
+  color: var(--ink);
+  font-size: 18px;
+}
+.theme-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.theme-toggle button {
+  min-height: 52px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--muted);
+  font-weight: 800;
+}
+.theme-toggle button.active {
+  border-color: var(--primary);
+  background: var(--accent-soft);
+  color: var(--primary-dark);
+}
+
+:root[data-theme="dark"] .top-bar button,
+:root[data-theme="dark"] .chat-header button,
+:root[data-theme="dark"] .action-button--ghost,
+:root[data-theme="dark"] .tile-button,
+:root[data-theme="dark"] .message,
+:root[data-theme="dark"] .history-item,
+:root[data-theme="dark"] .chat-tools button,
+:root[data-theme="dark"] .rating-scale button,
+:root[data-theme="dark"] .stats b,
+:root[data-theme="dark"] .ad-slot,
+:root[data-theme="dark"] .report-options button,
+:root[data-theme="dark"] input,
+:root[data-theme="dark"] .report-comment {
+  background: var(--card);
+  color: var(--ink);
+}
+
+:root[data-theme="dark"] .search-indicator {
+  background:
+    radial-gradient(circle, var(--panel) 0 38%, transparent 39%),
+    radial-gradient(circle, var(--accent-soft), transparent 68%);
+}
+
 @keyframes pulse-ring {
   0% { transform: scale(0.86); opacity: 0.9; }
   100% { transform: scale(1.26); opacity: 0; }
@@ -595,6 +686,11 @@ input {
 @keyframes search-step {
   0%, 100% { transform: translateY(0); opacity: 0.32; }
   50% { transform: translateY(-5px); opacity: 0.9; }
+}
+
+@keyframes brand-float {
+  0%, 100% { transform: translateY(0) scale(1); filter: drop-shadow(0 8px 16px rgba(184, 92, 120, 0.10)); }
+  50% { transform: translateY(-7px) scale(1.035); filter: drop-shadow(0 16px 22px rgba(184, 92, 120, 0.18)); }
 }
 
 @media (max-width: 420px) {
