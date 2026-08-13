@@ -339,7 +339,7 @@ export function HomePage() {
     return (
       <PhoneShell>
         <header className="top-bar">
-          <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />KOMEQ</strong>
+          <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />KOMEK</strong>
           <button onClick={() => setStep('safety')}>Настройки</button>
         </header>
         <section className="home-panel">
@@ -542,7 +542,7 @@ export function HomePage() {
     return (
       <PhoneShell>
         <header className="top-bar">
-          <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />KOMEQ</strong>
+          <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />KOMEK</strong>
           <button onClick={() => setStep('admin')}>Профиль</button>
         </header>
         <ScreenHeader title={`Здравствуйте, ${profile?.name ?? 'Алия'}`} subtitle="Статус помощи" />
