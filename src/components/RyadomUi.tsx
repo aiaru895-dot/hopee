@@ -7,12 +7,13 @@ type ActionButtonProps = {
   disabled?: boolean;
 };
 
-export function PhoneShell({ children }: { children: ReactNode }) {
+export function PhoneShell({ children, screenKey = 'static' }: { children: ReactNode; screenKey?: string }) {
   return (
     <main className="app-shell">
       <section className="phone-shell">
-        <img className="corner-brand" src="/app-icon.svg" alt="" aria-hidden="true" />
-        {children}
+        <div key={screenKey} className="screen-transition">
+          {children}
+        </div>
         <div className="ad-slot">
           <span>Место для рекламы</span>
         </div>

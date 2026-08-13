@@ -309,7 +309,7 @@ export function HomePage() {
 
   if (step === 'role') {
     return (
-      <PhoneShell>
+      <PhoneShell screenKey={step}>
         <ScreenHeader title="Добрый день" subtitle="Выберите, как хотите использовать сервис." />
         {message ? <p className="message">{message}</p> : null}
         <div className="stack">
@@ -323,7 +323,7 @@ export function HomePage() {
 
   if (step === 'databaseSetup') {
     return (
-      <PhoneShell>
+      <PhoneShell screenKey={step}>
         <ScreenHeader title="Нужно подключить базу" subtitle="Вход работает, но таблицы приложения еще не записаны в Supabase." />
         <div className="info-list">
           <p>Запустите миграции Supabase. После этого профиль и статистика будут сохраняться.</p>
@@ -337,7 +337,7 @@ export function HomePage() {
 
   if (step === 'elderHome') {
     return (
-      <PhoneShell>
+      <PhoneShell screenKey={step}>
         <header className="top-bar">
           <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />KOMEK</strong>
           <button onClick={() => setStep('safety')}>Настройки</button>
@@ -359,7 +359,7 @@ export function HomePage() {
 
   if (step === 'category') {
     return (
-      <PhoneShell>
+      <PhoneShell screenKey={step}>
         <ScreenHeader title="С чем помочь?" subtitle="Можно не выбирать тему: мы найдем доступного проверенного помощника." />
         <ActionButton onClick={() => startSearch('any')}>Найти любого помощника</ActionButton>
         <div className="grid">
@@ -374,7 +374,7 @@ export function HomePage() {
 
   if (step === 'search') {
     return (
-      <PhoneShell>
+      <PhoneShell screenKey={step}>
         <section className="center-screen">
           <div className="search-indicator" aria-hidden="true"><span /></div>
           <p className="eyebrow">Идет поиск</p>
@@ -393,7 +393,7 @@ export function HomePage() {
 
   if (step === 'found' && volunteer) {
     return (
-      <PhoneShell>
+      <PhoneShell screenKey={step}>
         <ScreenHeader title="Помощник найден" subtitle={`Тема: ${helpCategories.find((item) => item.id === category)?.label}`} />
         <VolunteerCard volunteer={volunteer} />
         <ActionButton onClick={() => setStep('chat')}>Начать разговор</ActionButton>
@@ -405,7 +405,7 @@ export function HomePage() {
   if (step === 'chat' && volunteer) {
     const risk = messages.some((item) => hasSafetyRisk(item.text));
     return (
-      <PhoneShell>
+      <PhoneShell screenKey={step}>
         <header className="chat-header">
           <div>
             <h1>{volunteer.name} К.</h1>
@@ -498,7 +498,7 @@ export function HomePage() {
 
   if (step === 'unsafe') {
     return (
-      <PhoneShell>
+      <PhoneShell screenKey={step}>
         <ScreenHeader title="Вам небезопасно?" subtitle="Можно сразу прекратить помощь и заблокировать пользователя." />
         <ActionButton tone="danger" onClick={stopUnsafeHelp}>Да, прекратить</ActionButton>
         <ActionButton tone="ghost" onClick={() => setStep('chat')}>Отмена</ActionButton>
@@ -508,7 +508,7 @@ export function HomePage() {
 
   if (step === 'blocked') {
     return (
-      <PhoneShell>
+      <PhoneShell screenKey={step}>
         <ScreenHeader title="Пользователь заблокирован" subtitle="Разговор остановлен. Жалоба отправлена на проверку." />
         <div className="info-list">
           <p>Вы можете вернуться на главный экран и найти другого помощника.</p>
@@ -521,7 +521,7 @@ export function HomePage() {
 
   if (step === 'rating') {
     return (
-      <PhoneShell>
+      <PhoneShell screenKey={step}>
         <ScreenHeader title="Спасибо" subtitle="Оцените работу помощника." />
         <div className="rating-scale">
           {[1, 2, 3, 4, 5].map((star) => <button key={star} onClick={() => setRating(star)} className={star <= rating ? 'active' : ''}>{star}</button>)}
@@ -540,7 +540,7 @@ export function HomePage() {
     const helped = volunteerStats?.people_helped ?? demoStats?.peopleHelped ?? 0;
 
     return (
-      <PhoneShell>
+      <PhoneShell screenKey={step}>
         <header className="top-bar">
           <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />KOMEK</strong>
           <button onClick={() => setStep('admin')}>Профиль</button>
@@ -573,7 +573,7 @@ export function HomePage() {
 
   if (step === 'incoming') {
     return (
-      <PhoneShell>
+      <PhoneShell screenKey={step}>
         <ScreenHeader title="Новый запрос" subtitle="Пользователю нужна помощь в чате." />
         <ActionButton onClick={acceptIncomingRequest}>Принять</ActionButton>
         <ActionButton tone="ghost" onClick={() => setStep('volunteerHome')}>Не могу сейчас</ActionButton>
@@ -601,7 +601,7 @@ export function HomePage() {
 
 function LoadingScreen({ title }: { title: string }) {
   return (
-    <PhoneShell>
+    <PhoneShell screenKey="loading">
       <section className="center-screen">
         <div className="search-indicator" aria-hidden="true"><span /></div>
         <h1>{title}</h1>
@@ -635,7 +635,7 @@ function HistoryScreen({
 }) {
   const sessionDate = session ? new Date(session.startedAt).toLocaleDateString('ru-RU') : 'Сегодня';
   return (
-    <PhoneShell>
+    <PhoneShell screenKey="history">
       <ScreenHeader title="Мои помощи" subtitle="Текущие и завершенные обращения." />
       <div className="history-list">
         {session && volunteer ? (
@@ -689,7 +689,7 @@ function ReportScreen({
   ];
 
   return (
-    <PhoneShell>
+    <PhoneShell screenKey="report">
       <ScreenHeader title="Пожаловаться" subtitle="Выберите причину и добавьте короткий комментарий." />
       <div className="report-options">
         {reasons.map((item) => (
@@ -726,7 +726,7 @@ function InfoScreen({
   const title = step === 'admin' ? 'Профиль' : step === 'volunteerProfile' ? 'Прогресс' : 'Безопасность';
   const reports = getSafetyReports();
   return (
-    <PhoneShell>
+    <PhoneShell screenKey={step}>
       <ScreenHeader title={title} subtitle={profile ? `${profile.name} · ${profile.city ?? 'город не указан'}` : undefined} />
       <div className="info-list">
         {step === 'safety' ? <p>Никому не сообщайте пароль, SMS-код, PIN или банковские данные.</p> : null}
