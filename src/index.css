@@ -309,6 +309,30 @@ button, input { font: inherit; }
   font-weight: 700;
   line-height: 1.45;
 }
+.warning p {
+  margin: 6px 0 0;
+  color: var(--danger);
+  font-size: 15px;
+}
+.warning button {
+  margin-top: 10px;
+  min-height: 42px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--danger);
+  color: #fff;
+  padding: 0 12px;
+  font-weight: 800;
+}
+.safety-note {
+  border: 1px solid var(--accent-line);
+  border-radius: 12px;
+  padding: 12px;
+  background: #fffafa;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.45;
+}
 
 .chat-header {
   display: flex;
@@ -406,6 +430,46 @@ button, input { font: inherit; }
   color: #fff;
   padding: 0 14px;
   font-weight: 760;
+}
+.chat-input button:disabled,
+.chat-tools button:disabled {
+  opacity: 0.5;
+}
+.safety-actions {
+  display: grid;
+  gap: 8px;
+}
+.safety-actions button,
+.report-options button {
+  min-height: 50px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--ink);
+  font-weight: 760;
+  text-align: left;
+  padding: 0 14px;
+}
+.safety-actions button:nth-child(2),
+.report-options button.active {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+.report-options {
+  display: grid;
+  gap: 8px;
+}
+.report-comment {
+  width: 100%;
+  min-height: 96px;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  color: var(--ink);
+  background: #fff;
+  font: inherit;
 }
 
 .rating-scale { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }

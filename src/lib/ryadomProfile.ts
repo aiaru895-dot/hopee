@@ -19,7 +19,11 @@ export type VolunteerProfileRow = {
   people_helped: number;
   thanks_received: number;
   successful_help_count: number;
+  trust_level?: string;
+  verification_status?: string;
 };
+
+const volunteerStatsSelect = 'xp, level, title, rating, people_helped, thanks_received, successful_help_count, trust_level, verification_status';
 
 export async function signInWithGoogle() {
   return supabase.auth.signInWithOAuth({
@@ -60,11 +64,14 @@ export async function createMyProfile(role: Role, name: string) {
 export async function createVolunteerProfile(profileId: string) {
   const { error } = await supabase.from('volunteer_profiles').insert({
     user_id: profileId,
-    verified: true,
-    verification_status: 'verified',
+    verified: false,
+    verification_status: 'new',
+    trust_level: 'NEW',
+    trust_score: 30,
+    risk_score: 0,
     xp: 0,
     level: 1,
-    title: 'Добрый помощник',
+    title: 'Новый помощник',
   });
   if (error) throw error;
 }
@@ -72,7 +79,7 @@ export async function createVolunteerProfile(profileId: string) {
 export async function loadVolunteerStats(profileId: string) {
   const { data, error } = await supabase
     .from('volunteer_profiles')
-    .select('xp, level, title, rating, people_helped, thanks_received, successful_help_count')
+    .select(volunteerStatsSelect)
     .eq('user_id', profileId)
     .maybeSingle();
   if (error) throw error;
@@ -94,7 +101,7 @@ export async function addVolunteerThanks(profileId: string) {
       thanks_received: stats.thanks_received + 1,
     })
     .eq('user_id', profileId)
-    .select('xp, level, title, rating, people_helped, thanks_received, successful_help_count')
+    .select(volunteerStatsSelect)
     .single();
   if (error) throw error;
   return data as VolunteerProfileRow;

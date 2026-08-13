@@ -6,18 +6,21 @@ import { VolunteerCard } from '../components/VolunteerCard';
 import { achievements, elders, helpCategories } from '../lib/ryadomData';
 import {
   addXP,
+  blockUser,
   createHelpRequest,
   createHelpSession,
   createMessage,
+  createSafetyReport,
   createStarterMessages,
   findRandomVolunteer,
   finishHelpSession,
+  getSafetyReports,
   hasSafetyRisk,
   resetMockBackend,
 } from '../lib/ryadomServices';
 import { createMyProfile, loadMyProfile, loadVolunteerStats, type ProfileRow, type VolunteerProfileRow } from '../lib/ryadomProfile';
 import { supabase } from '../lib/supabase';
-import type { Achievement, ChatMessage, HelpCategory, HelpSession, Role, Volunteer } from '../lib/ryadomTypes';
+import type { Achievement, ChatMessage, HelpCategory, HelpSession, ReportReason, Role, Volunteer } from '../lib/ryadomTypes';
 
 type Step =
   | 'loading'
@@ -28,6 +31,9 @@ type Step =
   | 'search'
   | 'found'
   | 'chat'
+  | 'report'
+  | 'unsafe'
+  | 'blocked'
   | 'history'
   | 'rating'
   | 'safety'
@@ -50,6 +56,9 @@ export function HomePage() {
   const [rating, setRating] = useState(0);
   const [message, setMessage] = useState('');
   const [databaseError, setDatabaseError] = useState('');
+  const [reportReason, setReportReason] = useState<ReportReason>('trolling');
+  const [reportComment, setReportComment] = useState('');
+  const [blockedChat, setBlockedChat] = useState(false);
   const searchTimerRef = useRef<number | undefined>(undefined);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const videoInputRef = useRef<HTMLInputElement | null>(null);
@@ -109,7 +118,8 @@ export function HomePage() {
     const request = createHelpRequest(profile?.id ?? elders[0].id, help);
 
     searchTimerRef.current = window.setTimeout(() => {
-      const matched = findRandomVolunteer(help) ?? findRandomVolunteer('any');
+      const elderId = profile?.id ?? elders[0].id;
+      const matched = findRandomVolunteer(help, elderId) ?? findRandomVolunteer('any', elderId);
       if (!matched) {
         setStep('category');
         return;
@@ -117,19 +127,20 @@ export function HomePage() {
       const nextSession = createHelpSession(request, matched);
       setVolunteer(matched);
       setHelpSession(nextSession);
+      setBlockedChat(false);
       setMessages(createStarterMessages(nextSession.id, matched.id));
       setStep('found');
     }, 1800);
   };
 
   const sendText = () => {
-    if (!helpSession || !draft.trim()) return;
+    if (!helpSession || !draft.trim() || blockedChat) return;
     setMessages((items) => [...items, createMessage(helpSession.id, profile?.id ?? elders[0].id, 'text', draft.trim())]);
     setDraft('');
   };
 
   const sendQuickMedia = (type: ChatMessage['messageType']) => {
-    if (!helpSession) return;
+    if (!helpSession || blockedChat) return;
     const textByType = {
       text: '',
       system: '',
@@ -141,7 +152,7 @@ export function HomePage() {
   };
 
   const sendSelectedFile = (type: 'photo' | 'video', file?: File) => {
-    if (!helpSession || !file) return;
+    if (!helpSession || !file || blockedChat) return;
     const url = URL.createObjectURL(file);
     const fallbackText = type === 'photo' ? 'Фото' : 'Видео';
     setMessages((items) => [
@@ -162,8 +173,29 @@ export function HomePage() {
     const nextSession = createHelpSession(request, matched);
     setVolunteer(matched);
     setHelpSession(nextSession);
+    setBlockedChat(false);
     setMessages(createStarterMessages(nextSession.id, profile?.id ?? matched.id));
     setStep('chat');
+  };
+
+  const submitReport = (reason: ReportReason, comment = reportComment) => {
+    if (!volunteer) return;
+    createSafetyReport(helpSession, profile?.id ?? elders[0].id, volunteer.id, reason, comment);
+    setReportComment('');
+    setStep('safety');
+  };
+
+  const blockCurrentVolunteer = () => {
+    if (!volunteer) return;
+    blockUser(profile?.id ?? elders[0].id, volunteer.id);
+    setBlockedChat(true);
+    setHelpSession((current) => (current ? { ...current, status: 'reported', endedAt: new Date().toISOString() } : current));
+    setStep('blocked');
+  };
+
+  const stopUnsafeHelp = () => {
+    submitReport('bad_behavior', 'Пользователь нажал кнопку "Мне небезопасно".');
+    blockCurrentVolunteer();
   };
 
   const finishRating = async () => {
@@ -282,7 +314,15 @@ export function HomePage() {
           </div>
           <button onClick={() => setStep('history')}>История</button>
         </header>
-        {risk ? <div className="warning">Никогда не сообщайте пароль, SMS-код, PIN или банковские данные.</div> : null}
+        <div className="safety-note">Никому не сообщайте пароли, SMS-коды и данные банковской карты. Настоящий помощник никогда не должен их просить.</div>
+        {risk ? (
+          <div className="warning">
+            <strong>Будьте осторожны</strong>
+            <p>Не сообщайте коды, пароли или банковские данные.</p>
+            <button onClick={() => submitReport('password', 'В чате обнаружен потенциально опасный запрос.')}>Это подозрительно</button>
+          </div>
+        ) : null}
+        {blockedChat ? <div className="warning">Разговор остановлен. Этот помощник больше не сможет написать вам в этом чате.</div> : null}
         <div className="chat-list">
           {messages.map((item) => (
             <div key={item.id} className={item.senderId === profile?.id ? 'message message--mine' : 'message'}>
@@ -293,9 +333,9 @@ export function HomePage() {
           ))}
         </div>
         <div className="chat-tools">
-          <button onClick={() => photoInputRef.current?.click()}>Фото</button>
-          <button onClick={() => sendQuickMedia('voice')}>Голос</button>
-          <button onClick={() => videoInputRef.current?.click()}>Видео</button>
+          <button disabled={blockedChat} onClick={() => photoInputRef.current?.click()}>Фото</button>
+          <button disabled={blockedChat} onClick={() => sendQuickMedia('voice')}>Голос</button>
+          <button disabled={blockedChat} onClick={() => videoInputRef.current?.click()}>Видео</button>
           <input
             ref={photoInputRef}
             className="file-input"
@@ -320,8 +360,13 @@ export function HomePage() {
           />
         </div>
         <div className="chat-input">
-          <input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Написать сообщение..." />
-          <button onClick={sendText}>Отправить</button>
+          <input disabled={blockedChat} value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Написать сообщение..." />
+          <button disabled={blockedChat} onClick={sendText}>Отправить</button>
+        </div>
+        <div className="safety-actions">
+          <button onClick={() => setStep('report')}>Пожаловаться</button>
+          <button onClick={() => setStep('unsafe')}>Мне небезопасно</button>
+          <button onClick={blockCurrentVolunteer}>Заблокировать</button>
         </div>
         <ActionButton tone="danger" onClick={completeHelp}>Закончить помощь</ActionButton>
       </PhoneShell>
@@ -330,6 +375,42 @@ export function HomePage() {
 
   if (step === 'history') {
     return <HistoryScreen session={helpSession} volunteer={volunteer} messages={messages} onChat={() => setStep('chat')} onBack={() => setStep('elderHome')} />;
+  }
+
+  if (step === 'report' && volunteer) {
+    return (
+      <ReportScreen
+        reason={reportReason}
+        comment={reportComment}
+        onReasonChange={setReportReason}
+        onCommentChange={setReportComment}
+        onSubmit={() => submitReport(reportReason)}
+        onBack={() => setStep('chat')}
+      />
+    );
+  }
+
+  if (step === 'unsafe') {
+    return (
+      <PhoneShell>
+        <ScreenHeader title="Вам небезопасно?" subtitle="Можно сразу прекратить помощь и заблокировать пользователя." />
+        <ActionButton tone="danger" onClick={stopUnsafeHelp}>Да, прекратить</ActionButton>
+        <ActionButton tone="ghost" onClick={() => setStep('chat')}>Отмена</ActionButton>
+      </PhoneShell>
+    );
+  }
+
+  if (step === 'blocked') {
+    return (
+      <PhoneShell>
+        <ScreenHeader title="Пользователь заблокирован" subtitle="Разговор остановлен. Жалоба отправлена на проверку." />
+        <div className="info-list">
+          <p>Вы можете вернуться на главный экран и найти другого помощника.</p>
+          <p>Пароли, SMS-коды и банковские данные никому сообщать нельзя.</p>
+        </div>
+        <ActionButton onClick={() => setStep('elderHome')}>На главный экран</ActionButton>
+      </PhoneShell>
+    );
   }
 
   if (step === 'rating') {
@@ -464,6 +545,48 @@ function HistoryScreen({
   );
 }
 
+function ReportScreen({
+  reason,
+  comment,
+  onReasonChange,
+  onCommentChange,
+  onSubmit,
+  onBack,
+}: {
+  reason: ReportReason;
+  comment: string;
+  onReasonChange: (reason: ReportReason) => void;
+  onCommentChange: (comment: string) => void;
+  onSubmit: () => void;
+  onBack: () => void;
+}) {
+  const reasons: Array<{ id: ReportReason; label: string }> = [
+    { id: 'trolling', label: 'Оскорбления или троллинг' },
+    { id: 'money', label: 'Просит деньги' },
+    { id: 'password', label: 'Просит пароль или SMS-код' },
+    { id: 'bank_data', label: 'Просит банковские данные' },
+    { id: 'suspicious_app', label: 'Просит установить подозрительное приложение' },
+    { id: 'suspicious_content', label: 'Отправляет подозрительный контент' },
+    { id: 'bad_behavior', label: 'Неприемлемое поведение' },
+    { id: 'other', label: 'Другое' },
+  ];
+
+  return (
+    <PhoneShell>
+      <ScreenHeader title="Пожаловаться" subtitle="Выберите причину и добавьте короткий комментарий." />
+      <div className="report-options">
+        {reasons.map((item) => (
+          <button key={item.id} className={item.id === reason ? 'active' : ''} onClick={() => onReasonChange(item.id)}>
+            {item.label}
+          </button>
+        ))}
+      </div>
+      <textarea className="report-comment" value={comment} onChange={(event) => onCommentChange(event.target.value)} placeholder="Короткий комментарий..." />
+      <ActionButton onClick={onSubmit}>Отправить жалобу</ActionButton>
+      <ActionButton tone="ghost" onClick={onBack}>Назад</ActionButton>
+    </PhoneShell>
+  );
+}
 function InfoScreen({
   step,
   profile,
@@ -478,6 +601,7 @@ function InfoScreen({
   onBack: () => void;
 }) {
   const title = step === 'admin' ? 'Профиль' : step === 'volunteerProfile' ? 'Прогресс' : 'Безопасность';
+  const reports = getSafetyReports();
   return (
     <PhoneShell>
       <ScreenHeader title={title} subtitle={profile ? `${profile.name} · ${profile.city ?? 'город не указан'}` : undefined} />
@@ -485,6 +609,7 @@ function InfoScreen({
         {step === 'safety' ? <p>Никому не сообщайте пароль, SMS-код, PIN или банковские данные.</p> : null}
         {step === 'safety' ? <p>Если разговор вызывает сомнения, завершите помощь и отправьте жалобу.</p> : null}
         {step === 'admin' ? <p>Роль сохранена в Supabase: {profile?.role === 'elder' ? 'получаю помощь' : 'помогаю'}.</p> : null}
+        {step === 'admin' ? <p>Модерация: {reports.length} жалоб в очереди, {reports.filter((item) => item.severity === 'high').length} высокого риска.</p> : null}
         {step === 'volunteerProfile' && stats ? <p>{stats.rating} рейтинг · {stats.xp} XP · {stats.people_helped} помощи · {stats.thanks_received} благодарностей</p> : null}
         {step === 'volunteerProfile' ? achievements.map((item) => <p key={item.id}><b>{item.name}</b><br />{item.description}</p>) : null}
       </div>

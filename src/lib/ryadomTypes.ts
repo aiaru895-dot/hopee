@@ -3,6 +3,17 @@ export type VolunteerStatus = 'offline' | 'online' | 'searching' | 'busy' | 'blo
 export type HelpCategory = 'phone' | 'messengers' | 'internet' | 'settings' | 'apps' | 'payments' | 'talk' | 'any';
 export type HelpSessionStatus = 'waiting' | 'matched' | 'active' | 'completed' | 'cancelled' | 'reported';
 export type MessageType = 'text' | 'voice' | 'photo' | 'video' | 'system';
+export type VolunteerTrustLevel = 'NEW' | 'BASIC' | 'VERIFIED' | 'TRUSTED' | 'SUSPENDED' | 'BANNED';
+export type ReportSeverity = 'normal' | 'high';
+export type ReportReason =
+  | 'trolling'
+  | 'money'
+  | 'password'
+  | 'bank_data'
+  | 'suspicious_app'
+  | 'suspicious_content'
+  | 'bad_behavior'
+  | 'other';
 
 export type User = {
   id: string;
@@ -31,6 +42,10 @@ export type VolunteerProfile = {
   thanksReceived: number;
   trustScore: number;
   riskScore: number;
+  trustLevel: VolunteerTrustLevel;
+  reportsCount: number;
+  seriousReportsCount: number;
+  blockedCount: number;
   online: boolean;
   busy: boolean;
 };
@@ -73,4 +88,16 @@ export type Achievement = {
   description: string;
   icon: string;
   requirement: number;
+};
+
+export type SafetyReport = {
+  id: string;
+  sessionId?: string;
+  reporterId: string;
+  reportedUserId: string;
+  reason: ReportReason;
+  severity: ReportSeverity;
+  comment: string;
+  createdAt: string;
+  status: 'pending' | 'reviewing' | 'resolved' | 'dismissed';
 };
