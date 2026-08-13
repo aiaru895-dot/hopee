@@ -48,12 +48,13 @@ export function AuthPanel({ onGuest }: AuthPanelProps) {
     <PhoneShell>
       <section className="app-intro" aria-hidden="true">
         <img src="/app-icon.svg" alt="" />
-        <strong>hopee</strong>
+        <strong>KOMEQ</strong>
       </section>
       <section className="login-hero">
         <img className="brand-symbol brand-symbol--hero" src="/app-icon.svg" alt="" aria-hidden="true" />
         <p className="eyebrow">Сервис поддержки</p>
-        <h1>hopee</h1>
+        <h1>KOMEQ</h1>
+        <p className="brand-tagline">Generations helping generations.</p>
         <p>Безопасная помощь с телефоном и повседневными цифровыми вопросами.</p>
       </section>
 

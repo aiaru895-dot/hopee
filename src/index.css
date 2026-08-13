@@ -142,6 +142,11 @@ button, input { font: inherit; }
   font-size: 19px;
   line-height: 1.45;
 }
+.login-hero .brand-tagline {
+  color: var(--primary-dark);
+  font-size: 17px;
+  font-weight: 700;
+}
 .brand-symbol {
   width: 82px;
   height: 82px;

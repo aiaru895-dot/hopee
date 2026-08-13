@@ -24,7 +24,7 @@ export function PhoneShell({ children }: { children: ReactNode }) {
 export function ScreenHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <header className="screen-header">
-      <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />hopee</strong>
+      <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />KOMEQ</strong>
       <h1>{title}</h1>
       {subtitle ? <p>{subtitle}</p> : null}
     </header>
