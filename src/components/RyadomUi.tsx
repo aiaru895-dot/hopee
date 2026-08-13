@@ -11,6 +11,7 @@ export function PhoneShell({ children }: { children: ReactNode }) {
   return (
     <main className="app-shell">
       <section className="phone-shell">
+        <img className="corner-brand" src="/app-icon.svg" alt="" aria-hidden="true" />
         {children}
         <div className="ad-slot">
           <span>Место для рекламы</span>

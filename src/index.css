@@ -62,6 +62,17 @@ button, input { font: inherit; }
   position: relative;
   overflow: hidden;
 }
+.corner-brand {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  object-fit: contain;
+  z-index: 2;
+  box-shadow: 0 8px 18px rgba(184, 92, 120, 0.12);
+}
 
 .top-bar {
   display: flex;
@@ -750,4 +761,40 @@ input {
   .grid { grid-template-columns: 1fr; }
   .chat-input { grid-template-columns: 1fr; }
   .chat-input button { min-height: 54px; }
+}
+
+@media (min-width: 860px) {
+  .app-shell {
+    align-items: start;
+    padding: 34px;
+  }
+  .phone-shell {
+    width: min(100%, 920px);
+    min-height: calc(100vh - 68px);
+    border-radius: 22px;
+    padding: 34px;
+  }
+  .corner-brand {
+    top: 20px;
+    right: 22px;
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+  }
+  .login-hero p {
+    max-width: 520px;
+  }
+  .home-panel {
+    max-width: 620px;
+  }
+  .grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .chat-list {
+    min-height: 360px;
+  }
+  .bottom-nav,
+  .safety-actions {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }

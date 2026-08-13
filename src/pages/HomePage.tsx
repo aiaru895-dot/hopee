@@ -44,6 +44,9 @@ type Step =
   | 'admin';
 
 type ThemeMode = 'light' | 'dark';
+type BrowserAudioWindow = Window & typeof globalThis & {
+  webkitAudioContext?: typeof AudioContext;
+};
 
 export function HomePage() {
   const [session, setSession] = useState<Session | null>(null);
@@ -67,6 +70,7 @@ export function HomePage() {
   const [isCheckingSafety, setIsCheckingSafety] = useState(false);
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => (localStorage.getItem('hopee-theme') === 'dark' ? 'dark' : 'light'));
   const searchTimerRef = useRef<number | undefined>(undefined);
+  const searchSoundRef = useRef<{ context: AudioContext; timer: number } | null>(null);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const videoInputRef = useRef<HTMLInputElement | null>(null);
   const visibleAchievements = useMemo(() => achievements.slice(0, 3), []);
@@ -103,7 +107,10 @@ export function HomePage() {
       });
   }, [session, guestMode]);
 
-  useEffect(() => () => window.clearTimeout(searchTimerRef.current), []);
+  useEffect(() => () => {
+    window.clearTimeout(searchTimerRef.current);
+    stopSearchSound();
+  }, []);
 
   useEffect(() => {
     document.documentElement.dataset.theme = themeMode;
@@ -112,6 +119,19 @@ export function HomePage() {
 
   const chooseRole = async (nextRole: Role) => {
     setRole(nextRole);
+    if (guestMode) {
+      setProfile({
+        id: elders[0].id,
+        auth_user_id: 'guest',
+        role: nextRole,
+        name: 'Гость',
+        age: null,
+        city: null,
+        avatar_url: null,
+      });
+      setStep(nextRole === 'elder' ? 'elderHome' : 'volunteerHome');
+      return;
+    }
     if (!session) return;
 
     try {
@@ -127,6 +147,7 @@ export function HomePage() {
 
   const startSearch = (help: HelpCategory) => {
     window.clearTimeout(searchTimerRef.current);
+    startSearchSound();
     setCategory(help);
     setStep('search');
     const request = createHelpRequest(profile?.id ?? elders[0].id, help);
@@ -135,6 +156,7 @@ export function HomePage() {
       const elderId = profile?.id ?? elders[0].id;
       const matched = findRandomVolunteer(help, elderId) ?? findRandomVolunteer('any', elderId);
       if (!matched) {
+        stopSearchSound();
         setStep('category');
         return;
       }
@@ -144,8 +166,42 @@ export function HomePage() {
       setBlockedChat(false);
       setAiSafety(null);
       setMessages(createStarterMessages(nextSession.id, matched.id));
+      stopSearchSound();
       setStep('found');
     }, 1800);
+  };
+
+  const startSearchSound = () => {
+    stopSearchSound();
+    const audioWindow = window as BrowserAudioWindow;
+    const AudioContextClass = audioWindow.AudioContext ?? audioWindow.webkitAudioContext;
+    if (!AudioContextClass) return;
+    const context = new AudioContextClass();
+    const playPulse = () => {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(520, context.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(760, context.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.0001, context.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.035, context.currentTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.18);
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start();
+      oscillator.stop(context.currentTime + 0.2);
+    };
+    playPulse();
+    const timer = window.setInterval(playPulse, 620);
+    searchSoundRef.current = { context, timer };
+  };
+
+  const stopSearchSound = () => {
+    const sound = searchSoundRef.current;
+    if (!sound) return;
+    window.clearInterval(sound.timer);
+    void sound.context.close();
+    searchSoundRef.current = null;
   };
 
   const sendText = async () => {
@@ -235,17 +291,9 @@ export function HomePage() {
 
   const enterAsGuest = () => {
     setGuestMode(true);
-    setRole('elder');
-    setProfile({
-      id: elders[0].id,
-      auth_user_id: 'guest',
-      role: 'elder',
-      name: 'Гость',
-      age: null,
-      city: null,
-      avatar_url: null,
-    });
-    setStep('elderHome');
+    setProfile(null);
+    setMessage('');
+    setStep('role');
   };
 
   const signOutApp = async () => {
@@ -268,7 +316,7 @@ export function HomePage() {
           <ActionButton onClick={() => chooseRole('elder')}>Мне нужна помощь</ActionButton>
           <ActionButton tone="calm" onClick={() => chooseRole('volunteer')}>Я хочу помогать</ActionButton>
         </div>
-        <ActionButton tone="ghost" onClick={() => supabase.auth.signOut()}>Выйти</ActionButton>
+        <ActionButton tone="ghost" onClick={signOutApp}>Выйти</ActionButton>
       </PhoneShell>
     );
   }
@@ -282,7 +330,7 @@ export function HomePage() {
           <p>{databaseError}</p>
         </div>
         <ActionButton onClick={() => window.location.reload()}>Проверить снова</ActionButton>
-        <ActionButton tone="ghost" onClick={() => supabase.auth.signOut()}>Выйти</ActionButton>
+        <ActionButton tone="ghost" onClick={signOutApp}>Выйти</ActionButton>
       </PhoneShell>
     );
   }
@@ -337,7 +385,7 @@ export function HomePage() {
             <span />
             <span />
           </div>
-          <ActionButton tone="ghost" onClick={() => { window.clearTimeout(searchTimerRef.current); setStep('elderHome'); }}>Отменить поиск</ActionButton>
+          <ActionButton tone="ghost" onClick={() => { window.clearTimeout(searchTimerRef.current); stopSearchSound(); setStep('elderHome'); }}>Отменить поиск</ActionButton>
         </section>
       </PhoneShell>
     );
