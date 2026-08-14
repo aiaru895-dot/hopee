@@ -207,7 +207,7 @@ export function HomePage() {
   const chooseRole = async (nextRole: Role) => {
     setRole(nextRole);
     if (guestMode) {
-      playEnterSound();
+      playOpenSound();
       const guestId = `guest-${nextRole}`;
       setProfile({
         id: guestId,
@@ -231,7 +231,7 @@ export function HomePage() {
       const meta = session.user.user_metadata;
       const fullName = [meta.first_name, meta.last_name].filter((item): item is string => typeof item === 'string' && item.trim().length > 0).join(' ');
       const savedProfile = await createMyProfile(nextRole, fullName || (typeof meta.full_name === 'string' ? meta.full_name : fallbackName));
-      playEnterSound();
+      playOpenSound();
       setProfile(savedProfile);
       if (nextRole === 'volunteer') setVolunteerStats(await loadVolunteerStats(savedProfile.id));
       setStep(nextRole === 'elder' ? 'elderHome' : 'volunteerHome');
@@ -317,34 +317,35 @@ export function HomePage() {
     searchSoundRef.current = null;
   };
 
-  const playEnterSound = () => {
+  const playOpenSound = () => {
+    playToneSequence([520, 660, 880], 0.07);
+  };
+
+  const playCloseSound = () => {
+    playToneSequence([880, 660, 440], 0.06);
+  };
+
+  const playToneSequence = (notes: number[], volume: number) => {
     if (!soundEnabled) return;
     const audioWindow = window as BrowserAudioWindow;
     const AudioContextClass = audioWindow.AudioContext ?? audioWindow.webkitAudioContext;
     if (!AudioContextClass) return;
     const context = new AudioContextClass();
-    const noiseLength = Math.floor(context.sampleRate * 0.42);
-    const buffer = context.createBuffer(1, noiseLength, context.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let index = 0; index < noiseLength; index += 1) {
-      data[index] = (Math.random() * 2 - 1) * (1 - index / noiseLength);
-    }
-    const noise = context.createBufferSource();
-    const filter = context.createBiquadFilter();
-    const gain = context.createGain();
-    noise.buffer = buffer;
-    filter.type = 'bandpass';
-    filter.frequency.setValueAtTime(900, context.currentTime);
-    filter.frequency.exponentialRampToValueAtTime(2200, context.currentTime + 0.28);
-    gain.gain.setValueAtTime(0.0001, context.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.055, context.currentTime + 0.04);
-    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.42);
-    noise.connect(filter);
-    filter.connect(gain);
-    gain.connect(context.destination);
-    noise.start();
-    noise.stop(context.currentTime + 0.44);
-    window.setTimeout(() => void context.close(), 520);
+    notes.forEach((frequency, index) => {
+      const startAt = context.currentTime + index * 0.09;
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(frequency, startAt);
+      gain.gain.setValueAtTime(0.0001, startAt);
+      gain.gain.exponentialRampToValueAtTime(volume, startAt + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.12);
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(startAt);
+      oscillator.stop(startAt + 0.14);
+    });
+    window.setTimeout(() => void context.close(), notes.length * 95 + 180);
   };
 
   const sendText = async () => {
@@ -432,6 +433,7 @@ export function HomePage() {
   };
 
   const enterAsGuest = () => {
+    playOpenSound();
     setGuestMode(true);
     setProfile(null);
     setVolunteerStats(null);
@@ -442,6 +444,7 @@ export function HomePage() {
   };
 
   const signOutApp = async () => {
+    playCloseSound();
     setGuestMode(false);
     setProfile(null);
     setVolunteerStats(null);
