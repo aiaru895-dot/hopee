@@ -19,10 +19,11 @@ import {
   hasSafetyRisk,
   resetMockBackend,
 } from '../lib/ryadomServices';
-import { createMyProfile, loadMyProfile, loadVolunteerStats, type ProfileRow, type VolunteerProfileRow } from '../lib/ryadomProfile';
+import { createMyProfile, loadMyProfile, loadVolunteerStats, updateMyProfileName, type ProfileRow, type VolunteerProfileRow } from '../lib/ryadomProfile';
 import { supabase } from '../lib/supabase';
 import type { Language } from '../lib/i18n';
 import { languageNames, uiText } from '../lib/i18n';
+import { cleanDisplayName } from '../lib/displayText';
 import type { Achievement, ChatMessage, HelpCategory, HelpSession, ReportReason, Role, Volunteer } from '../lib/ryadomTypes';
 
 type Step =
@@ -84,6 +85,7 @@ export function HomePage() {
   const videoInputRef = useRef<HTMLInputElement | null>(null);
   const visibleAchievements = useMemo(() => achievements.slice(0, 3), []);
   const text = uiText[language];
+  const profileName = cleanDisplayName(profile?.name, profile?.role ?? role);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -102,11 +104,15 @@ export function HomePage() {
 
     loadMyProfile()
       .then(async (savedProfile) => {
-        setProfile(savedProfile);
         if (!savedProfile) {
+          setProfile(null);
           setStep('role');
           return;
         }
+        const cleanName = cleanDisplayName(savedProfile.name, savedProfile.role);
+        const cleanProfile = cleanName === savedProfile.name ? savedProfile : { ...savedProfile, name: cleanName };
+        setProfile(cleanProfile);
+        if (cleanName !== savedProfile.name) void updateMyProfileName(savedProfile.id, cleanName);
         setRole(savedProfile.role);
         setStep(savedProfile.role === 'elder' ? 'elderHome' : 'volunteerHome');
         if (savedProfile.role === 'volunteer') setVolunteerStats(await loadVolunteerStats(savedProfile.id));
@@ -402,7 +408,7 @@ export function HomePage() {
           <button onClick={() => setStep('safety')}>{text.settings}</button>
         </header>
         <section className="home-panel">
-          <p className="eyebrow">{text.roleTitle}, {profile?.name ?? 'Aliya'}</p>
+          <p className="eyebrow">{text.roleTitle}, {profileName}</p>
           <p>{text.intro}</p>
           <ActionButton onClick={() => setStep('category')}>{text.chooseHelp}</ActionButton>
         </section>
@@ -604,7 +610,7 @@ export function HomePage() {
           <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />KOMEK</strong>
           <button onClick={() => setStep('admin')}>{text.profile}</button>
         </header>
-        <ScreenHeader title={`${text.hello}, ${profile?.name ?? 'Aliya'}`} subtitle={text.helpStatus} />
+        <ScreenHeader title={`${text.hello}, ${profileName}`} subtitle={text.helpStatus} />
         <section className="status-card">
           <div>
             <p className="eyebrow">{text.readiness}</p>
@@ -806,9 +812,10 @@ function InfoScreen({
 }) {
   const title = step === 'admin' ? uiText[language].profile : step === 'volunteerProfile' ? uiText[language].progress : uiText[language].settings;
   const reports = getSafetyReports();
+  const profileName = cleanDisplayName(profile?.name, profile?.role);
   return (
     <PhoneShell screenKey={step} language={language}>
-      <ScreenHeader title={title} subtitle={profile ? `${profile.name} · ${profile.city ?? ''}` : undefined} />
+      <ScreenHeader title={title} subtitle={profile ? `${profileName} · ${profile.city ?? ''}` : undefined} />
       <div className="info-list">
         {step === 'safety' ? <p>{uiText[language].safetyNote}</p> : null}
         {step === 'admin' ? <p>{uiText[language].profile}: {profile?.role === 'elder' ? uiText[language].needHelp : uiText[language].wantHelp}</p> : null}

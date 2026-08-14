@@ -1,5 +1,6 @@
 ﻿import { supabase } from './supabase';
 import type { Role } from './ryadomTypes';
+import { cleanDisplayName } from './displayText';
 
 export type ProfileRow = {
   id: string;
@@ -49,7 +50,7 @@ export async function createMyProfile(role: Role, name: string) {
     .insert({
       auth_user_id: authUser.id,
       role,
-      name,
+      name: cleanDisplayName(name, role),
       age: role === 'elder' ? 72 : 24,
       city: 'Алматы',
     })
@@ -73,6 +74,11 @@ export async function createVolunteerProfile(profileId: string) {
     level: 1,
     title: 'Новый помощник',
   });
+  if (error) throw error;
+}
+
+export async function updateMyProfileName(profileId: string, name: string) {
+  const { error } = await supabase.from('profiles').update({ name }).eq('id', profileId);
   if (error) throw error;
 }
 
