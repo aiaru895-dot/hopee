@@ -77,17 +77,17 @@ export function AuthPanel({ language, onGuest }: AuthPanelProps) {
     <PhoneShell screenKey="auth">
       <section className="app-intro" aria-hidden="true">
         <img src="/app-icon.svg" alt="" />
-        <strong>KOMEQ</strong>
+        <strong>KÖMEK</strong>
       </section>
       <header className="desktop-app-header">
-        <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />KOMEQ</strong>
+        <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />KÖMEK</strong>
         <span>{text.service}</span>
       </header>
       <div className="auth-layout">
         <section className="login-hero">
           <img className="brand-symbol brand-symbol--hero" src="/app-icon.svg" alt="" aria-hidden="true" />
           <p className="eyebrow">{text.service}</p>
-          <h1>KOMEQ</h1>
+          <h1>KÖMEK</h1>
           <p className="brand-tagline">Generations helping generations.</p>
           <p>{text.intro}</p>
         </section>

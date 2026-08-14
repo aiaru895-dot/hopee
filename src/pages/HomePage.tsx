@@ -491,11 +491,11 @@ export function HomePage() {
     return (
       <PhoneShell screenKey={step} language={language}>
         <header className="top-bar">
-          <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />KOMEQ</strong>
+          <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />KÖMEK</strong>
           <button onClick={() => setStep('safety')}>{text.settings}</button>
         </header>
         <section className="home-panel">
-          <h1>KOMEQ</h1>
+          <h1>KÖMEK</h1>
           <p className="eyebrow">{text.roleTitle}, {profileName}</p>
           <p>{text.intro}</p>
           <ActionButton onClick={() => setStep('category')}>{text.chooseHelp}</ActionButton>
@@ -717,7 +717,7 @@ export function HomePage() {
     return (
       <PhoneShell screenKey={step} language={language}>
         <header className="top-bar">
-          <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />KOMEQ</strong>
+          <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />KÖMEK</strong>
           <button onClick={() => setStep('admin')}>{text.profile}</button>
         </header>
         <ScreenHeader title={`${text.hello}, ${profileName}`} subtitle={text.helpStatus} />
