@@ -32,6 +32,7 @@ type Step =
   | 'elderHome'
   | 'category'
   | 'search'
+  | 'noVolunteer'
   | 'found'
   | 'chat'
   | 'report'
@@ -56,6 +57,50 @@ const friendsLeaderboard = [
   { name: 'Данияр', score: 18 },
   { name: 'Мария', score: 12 },
 ];
+
+const guestStats: VolunteerProfileRow = {
+  xp: 0,
+  level: 1,
+  title: 'Новый помощник',
+  rating: 0,
+  people_helped: 0,
+  thanks_received: 0,
+  successful_help_count: 0,
+  trust_level: 'NEW',
+  verification_status: 'guest',
+};
+
+const aiVolunteer: Volunteer = {
+  id: 'ai-helper',
+  role: 'volunteer',
+  name: 'AI',
+  age: 0,
+  city: 'Online',
+  avatar: 'AI',
+  createdAt: new Date().toISOString(),
+  status: 'online',
+  profile: {
+    userId: 'ai-helper',
+    verified: true,
+    skills: ['any'],
+    rating: 5,
+    ratingCount: 0,
+    xp: 0,
+    level: 1,
+    title: 'AI помощник',
+    successfulHelpCount: 0,
+    peopleHelped: 0,
+    thanksReceived: 0,
+    trustScore: 100,
+    riskScore: 0,
+    trustLevel: 'VERIFIED',
+    reportsCount: 0,
+    seriousReportsCount: 0,
+    blockedCount: 0,
+    online: true,
+    busy: false,
+  },
+};
 
 type LeaderboardRow = {
   name: string;
@@ -163,15 +208,19 @@ export function HomePage() {
     setRole(nextRole);
     if (guestMode) {
       playEnterSound();
+      const guestId = `guest-${nextRole}`;
       setProfile({
-        id: elders[0].id,
+        id: guestId,
         auth_user_id: 'guest',
         role: nextRole,
-        name: 'Guest',
+        name: nextRole === 'elder' ? uiText[language].needHelp : uiText[language].wantHelp,
         age: null,
         city: null,
         avatar_url: null,
       });
+      setVolunteerStats(nextRole === 'volunteer' ? guestStats : null);
+      setHelpSession(undefined);
+      setMessages([]);
       setStep(nextRole === 'elder' ? 'elderHome' : 'volunteerHome');
       return;
     }
@@ -203,7 +252,8 @@ export function HomePage() {
       const matched = findRandomVolunteer(help, elderId) ?? findRandomVolunteer('any', elderId);
       if (!matched) {
         stopSearchSound();
-        setStep('category');
+        setVolunteer(aiVolunteer);
+        setStep('noVolunteer');
         return;
       }
       const nextSession = createHelpSession(request, matched);
@@ -215,6 +265,21 @@ export function HomePage() {
       stopSearchSound();
       setStep('found');
     }, 1800);
+  };
+
+  const startAiHelp = () => {
+    const elderId = profile?.id ?? 'guest-elder';
+    const request = createHelpRequest(elderId, category);
+    const nextSession = createHelpSession(request, aiVolunteer);
+    setVolunteer(aiVolunteer);
+    setHelpSession(nextSession);
+    setBlockedChat(false);
+    setAiSafety(null);
+    setMessages([
+      createMessage(nextSession.id, aiVolunteer.id, 'system', 'Свободных волонтёров сейчас нет. AI поможет с простыми шагами и подскажет, когда нужен человек.'),
+      createMessage(nextSession.id, aiVolunteer.id, 'text', 'Опишите, что не получается. Я отвечу спокойно и без просьб о паролях или кодах.'),
+    ]);
+    setStep('chat');
   };
 
   const startSearchSound = () => {
@@ -358,11 +423,10 @@ export function HomePage() {
 
   const stopUnsafeHelp = () => {
     submitReport('bad_behavior', uiText[language].unsafe);
-    submitReport('bad_behavior', uiText[language].unsafe);
   };
 
   const finishRating = async () => {
-    if (profile?.role === 'volunteer') setVolunteerStats(await loadVolunteerStats(profile.id));
+    if (profile?.role === 'volunteer' && !guestMode) setVolunteerStats(await loadVolunteerStats(profile.id));
     resetMockBackend();
     setStep(role === 'elder' ? 'elderHome' : 'volunteerHome');
   };
@@ -370,6 +434,9 @@ export function HomePage() {
   const enterAsGuest = () => {
     setGuestMode(true);
     setProfile(null);
+    setVolunteerStats(null);
+    setHelpSession(undefined);
+    setMessages([]);
     setMessage('');
     setStep('role');
   };
@@ -377,6 +444,9 @@ export function HomePage() {
   const signOutApp = async () => {
     setGuestMode(false);
     setProfile(null);
+    setVolunteerStats(null);
+    setHelpSession(undefined);
+    setMessages([]);
     setStep('role');
     await supabase.auth.signOut();
   };
@@ -417,10 +487,11 @@ export function HomePage() {
     return (
       <PhoneShell screenKey={step} language={language}>
         <header className="top-bar">
-          <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />KOMEK</strong>
+          <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />KOMEQ</strong>
           <button onClick={() => setStep('safety')}>{text.settings}</button>
         </header>
         <section className="home-panel">
+          <h1>KOMEQ</h1>
           <p className="eyebrow">{text.roleTitle}, {profileName}</p>
           <p>{text.intro}</p>
           <ActionButton onClick={() => setStep('category')}>{text.chooseHelp}</ActionButton>
@@ -437,7 +508,7 @@ export function HomePage() {
   if (step === 'category') {
     return (
       <PhoneShell screenKey={step} language={language}>
-        <ScreenHeader title={text.categoryTitle} subtitle={text.intro} />
+        <ScreenHeader title="Нужна помощь?" subtitle={text.intro} />
         <ActionButton onClick={() => startSearch('any')}>{text.anyHelper}</ActionButton>
         <div className="grid">
           {helpCategories.filter((item) => item.id !== 'any').map((item) => (
@@ -475,6 +546,20 @@ export function HomePage() {
         <VolunteerCard volunteer={volunteer} language={language} />
         <ActionButton onClick={() => setStep('chat')}>{text.startChat}</ActionButton>
         <ActionButton tone="ghost" onClick={() => startSearch(category)}>{text.otherHelper}</ActionButton>
+      </PhoneShell>
+    );
+  }
+
+  if (step === 'noVolunteer') {
+    return (
+      <PhoneShell screenKey={step} language={language}>
+        <ScreenHeader title="Нет мест" subtitle="Свободных волонтёров сейчас нет, но AI может помочь сразу." />
+        <div className="info-list">
+          <p>AI подскажет безопасные шаги и не попросит пароль, SMS-код или банковские данные.</p>
+          <p>Если появится проблема, можно отправить жалобу на модерацию.</p>
+        </div>
+        <ActionButton onClick={startAiHelp}>Начать с AI</ActionButton>
+        <ActionButton tone="ghost" onClick={() => startSearch(category)}>Искать ещё раз</ActionButton>
       </PhoneShell>
     );
   }
@@ -619,7 +704,7 @@ export function HomePage() {
     return (
       <PhoneShell screenKey={step} language={language}>
         <header className="top-bar">
-          <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />KOMEK</strong>
+          <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />KOMEQ</strong>
           <button onClick={() => setStep('admin')}>{text.profile}</button>
         </header>
         <ScreenHeader title={`${text.hello}, ${profileName}`} subtitle={text.helpStatus} />
@@ -685,7 +770,8 @@ export function HomePage() {
 }
 
 function Leaderboard({ title, currentName, currentScore }: { title: string; currentName: string; currentScore: number }) {
-  const rows: LeaderboardRow[] = [{ name: currentName, score: currentScore, current: true }, ...friendsLeaderboard.map((friend) => ({ ...friend, current: false }))]
+  const friends = currentScore > 0 ? friendsLeaderboard : [];
+  const rows: LeaderboardRow[] = [{ name: currentName, score: currentScore, current: true }, ...friends.map((friend) => ({ ...friend, current: false }))]
     .sort((first, second) => second.score - first.score)
     .slice(0, 4);
 
@@ -889,7 +975,11 @@ function InfoScreen({
           </div>
         ) : null}
         {step === 'volunteerProfile' && stats ? <p>{stats.rating} {uiText[language].rating} · {stats.xp} XP · {stats.people_helped} {uiText[language].helpedCount}</p> : null}
-        {step === 'volunteerProfile' ? achievements.map((item) => <p key={item.id}><b>{item.name}</b><br />{item.description}</p>) : null}
+        {step === 'volunteerProfile' && stats?.people_helped === 0 ? <p>{uiText[language].noActivity}</p> : null}
+        {step === 'volunteerProfile' && stats && stats.people_helped > 0 ? achievements.map((item) => {
+          const unlocked = stats.people_helped >= item.requirement;
+          return <p key={item.id}><b>{item.name}</b><br />{unlocked ? uiText[language].done : uiText[language].noActivity}</p>;
+        }) : null}
       </div>
       <ActionButton onClick={onBack}>{uiText[language].back}</ActionButton>
       <ActionButton tone="ghost" onClick={onSignOut}>{uiText[language].signOut}</ActionButton>

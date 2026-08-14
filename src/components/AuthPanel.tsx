@@ -17,7 +17,7 @@ export function AuthPanel({ language, onGuest }: AuthPanelProps) {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [mode, setMode] = useState<'signin' | 'signup'>('signup');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -44,6 +44,10 @@ export function AuthPanel({ language, onGuest }: AuthPanelProps) {
     try {
       if (mode === 'signup') {
         const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+        if (!firstName.trim() || !lastName.trim()) {
+          setMessage('Введите имя и фамилию.');
+          return;
+        }
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -73,12 +77,12 @@ export function AuthPanel({ language, onGuest }: AuthPanelProps) {
     <PhoneShell>
       <section className="app-intro" aria-hidden="true">
         <img src="/app-icon.svg" alt="" />
-        <strong>KOMEK</strong>
+        <strong>KOMEQ</strong>
       </section>
       <section className="login-hero">
         <img className="brand-symbol brand-symbol--hero" src="/app-icon.svg" alt="" aria-hidden="true" />
         <p className="eyebrow">{text.service}</p>
-        <h1>KOMEK</h1>
+        <h1>KOMEQ</h1>
         <p className="brand-tagline">Generations helping generations.</p>
         <p>{text.intro}</p>
       </section>
