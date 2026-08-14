@@ -24,10 +24,16 @@ const ru = {
   theme: '\u0422\u0435\u043c\u0430 \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u044f', defaultTheme: '\u041f\u043e \u0443\u043c\u043e\u043b\u0447\u0430\u043d\u0438\u044e', darkTheme: '\u0422\u0451\u043c\u043d\u0430\u044f', textSize: '\u0420\u0430\u0437\u043c\u0435\u0440 \u0442\u0435\u043a\u0441\u0442\u0430', normalText: '\u041e\u0431\u044b\u0447\u043d\u044b\u0439', largeText: '\u041a\u0440\u0443\u043f\u043d\u044b\u0439', sound: '\u0417\u0432\u0443\u043a', soundOn: '\u0412\u043a\u043b\u044e\u0447\u0451\u043d', soundOff: '\u0412\u044b\u043a\u043b\u044e\u0447\u0435\u043d', language: '\u042f\u0437\u044b\u043a', signOut: '\u0412\u044b\u0439\u0442\u0438 \u0438\u0437 \u0430\u043a\u043a\u0430\u0443\u043d\u0442\u0430',
   messagePlaceholder: '\u041d\u0430\u043f\u0438\u0441\u0430\u0442\u044c \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0435...', retry: '\u041f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u0441\u043d\u043e\u0432\u0430', suspicious: '\u042d\u0442\u043e \u043f\u043e\u0434\u043e\u0437\u0440\u0438\u0442\u0435\u043b\u044c\u043d\u043e', yesStop: '\u0414\u0430, \u043f\u0440\u0435\u043a\u0440\u0430\u0442\u0438\u0442\u044c', cancel: '\u041e\u0442\u043c\u0435\u043d\u0430', home: '\u041d\u0430 \u0433\u043b\u0430\u0432\u043d\u044b\u0439 \u044d\u043a\u0440\u0430\u043d', submitReport: '\u041e\u0442\u043f\u0440\u0430\u0432\u0438\u0442\u044c \u0436\u0430\u043b\u043e\u0431\u0443',
   categoryTitle: '\u0421 \u0447\u0435\u043c \u043f\u043e\u043c\u043e\u0447\u044c?', searchTitle: '\u0418\u0449\u0435\u043c \u043f\u043e\u043c\u043e\u0449\u043d\u0438\u043a\u0430', searchEyebrow: '\u0418\u0434\u0435\u0442 \u043f\u043e\u0438\u0441\u043a', foundTitle: '\u041f\u043e\u043c\u043e\u0449\u043d\u0438\u043a \u043d\u0430\u0439\u0434\u0435\u043d', verifiedHelper: '\u041f\u0440\u043e\u0432\u0435\u0440\u0435\u043d\u043d\u044b\u0439 \u043f\u043e\u043c\u043e\u0449\u043d\u0438\u043a', rating: '\u0440\u0435\u0439\u0442\u0438\u043d\u0433', helpedCount: '\u043f\u043e\u043c\u043e\u0449\u0438', ad: '\u041c\u0435\u0441\u0442\u043e \u0434\u043b\u044f \u0440\u0435\u043a\u043b\u0430\u043c\u044b',
+  safetyNote: '\u041d\u0438\u043a\u043e\u043c\u0443 \u043d\u0435 \u0441\u043e\u043e\u0431\u0449\u0430\u0439\u0442\u0435 \u043f\u0430\u0440\u043e\u043b\u0438, SMS-\u043a\u043e\u0434\u044b, PIN \u0438\u043b\u0438 \u0434\u0430\u043d\u043d\u044b\u0435 \u0431\u0430\u043d\u043a\u043e\u0432\u0441\u043a\u043e\u0439 \u043a\u0430\u0440\u0442\u044b. \u041d\u0430\u0441\u0442\u043e\u044f\u0449\u0438\u0439 \u043f\u043e\u043c\u043e\u0449\u043d\u0438\u043a \u043d\u0438\u043a\u043e\u0433\u0434\u0430 \u043d\u0435 \u0434\u043e\u043b\u0436\u0435\u043d \u0438\u0445 \u043f\u0440\u043e\u0441\u0438\u0442\u044c.',
+  aiChecking: '\u0418\u0418 \u043f\u0440\u043e\u0432\u0435\u0440\u044f\u0435\u0442 \u0434\u0438\u0430\u043b\u043e\u0433 \u043d\u0430 \u043c\u043e\u0448\u0435\u043d\u043d\u0438\u0447\u0435\u0441\u0442\u0432\u043e...',
+  dialogStopped: '\u0414\u0438\u0430\u043b\u043e\u0433 \u043e\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d',
+  beCareful: '\u0411\u0443\u0434\u044c\u0442\u0435 \u043e\u0441\u0442\u043e\u0440\u043e\u0436\u043d\u044b',
+  cautionNeeded: '\u041d\u0443\u0436\u043d\u0430 \u043e\u0441\u0442\u043e\u0440\u043e\u0436\u043d\u043e\u0441\u0442\u044c',
+  blockedChat: '\u0420\u0430\u0437\u0433\u043e\u0432\u043e\u0440 \u043e\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d. \u042d\u0442\u043e\u0442 \u043f\u043e\u043c\u043e\u0449\u043d\u0438\u043a \u0431\u043e\u043b\u044c\u0448\u0435 \u043d\u0435 \u0441\u043c\u043e\u0436\u0435\u0442 \u043d\u0430\u043f\u0438\u0441\u0430\u0442\u044c \u0432\u0430\u043c \u0432 \u044d\u0442\u043e\u043c \u0447\u0430\u0442\u0435.',
 };
 
 const en: typeof ru = {
-  service: 'Support service', intro: 'Safe help with phones and everyday digital questions.', google: 'Continue with Google', guest: 'Continue as guest', signIn: 'Sign in', signUp: 'Create account', haveAccount: 'I already have an account', password: 'password', roleTitle: 'Good day', roleSubtitle: 'Choose how you want to use the service.', needHelp: 'I need help', wantHelp: 'I want to help', exit: 'Exit', settings: 'Settings', help: 'Help', history: 'History', profile: 'Profile', progress: 'Progress', chooseHelp: 'Choose help type', anyHelper: 'Find any helper', back: 'Back', cancelSearch: 'Cancel search', startChat: 'Start chat', otherHelper: 'Another helper', send: 'Send', photo: 'Photo', voice: 'Voice', video: 'Video', complaint: 'Report', unsafe: 'I feel unsafe', block: 'Block', finishHelp: 'Finish help', done: 'Done', showRequest: 'Show request', accept: 'Accept', notNow: 'Not now', theme: 'App theme', defaultTheme: 'Default', darkTheme: 'Dark', textSize: 'Text size', normalText: 'Normal', largeText: 'Large', sound: 'Sound', soundOn: 'On', soundOff: 'Off', language: 'Language', signOut: 'Sign out', messagePlaceholder: 'Write a message...', retry: 'Check again', suspicious: 'This is suspicious', yesStop: 'Yes, stop', cancel: 'Cancel', home: 'Go home', submitReport: 'Send report', categoryTitle: 'What do you need help with?', searchTitle: 'Finding a helper', searchEyebrow: 'Searching', foundTitle: 'Helper found', verifiedHelper: 'Verified helper', rating: 'rating', helpedCount: 'helps', ad: 'Ad space',
+  service: 'Support service', intro: 'Safe help with phones and everyday digital questions.', google: 'Continue with Google', guest: 'Continue as guest', signIn: 'Sign in', signUp: 'Create account', haveAccount: 'I already have an account', password: 'password', roleTitle: 'Good day', roleSubtitle: 'Choose how you want to use the service.', needHelp: 'I need help', wantHelp: 'I want to help', exit: 'Exit', settings: 'Settings', help: 'Help', history: 'History', profile: 'Profile', progress: 'Progress', chooseHelp: 'Choose help type', anyHelper: 'Find any helper', back: 'Back', cancelSearch: 'Cancel search', startChat: 'Start chat', otherHelper: 'Another helper', send: 'Send', photo: 'Photo', voice: 'Voice', video: 'Video', complaint: 'Report', unsafe: 'I feel unsafe', block: 'Block', finishHelp: 'Finish help', done: 'Done', showRequest: 'Show request', accept: 'Accept', notNow: 'Not now', theme: 'App theme', defaultTheme: 'Default', darkTheme: 'Dark', textSize: 'Text size', normalText: 'Normal', largeText: 'Large', sound: 'Sound', soundOn: 'On', soundOff: 'Off', language: 'Language', signOut: 'Sign out', messagePlaceholder: 'Write a message...', retry: 'Check again', suspicious: 'This is suspicious', yesStop: 'Yes, stop', cancel: 'Cancel', home: 'Go home', submitReport: 'Send report', categoryTitle: 'What do you need help with?', searchTitle: 'Finding a helper', searchEyebrow: 'Searching', foundTitle: 'Helper found', verifiedHelper: 'Verified helper', rating: 'rating', helpedCount: 'helps', ad: 'Ad space', safetyNote: 'Never share passwords, SMS codes, PINs, or bank card details. A real helper should never ask for them.', aiChecking: 'AI is checking the dialog for fraud...', dialogStopped: 'Dialog stopped', beCareful: 'Be careful', cautionNeeded: 'Caution needed', blockedChat: 'The conversation has been stopped. This helper can no longer message you in this chat.',
 };
 
 const kk: typeof ru = {
@@ -38,11 +44,17 @@ const kk: typeof ru = {
 export const uiText = { ru, kk, en } as const;
 
 export function fixMojibake(value: string): string {
-  if (!/[РСЃСЂСЊС‹С€Тљ]/.test(value)) return value;
-  try {
-    const bytes = Uint8Array.from(Array.from(value), (char) => char.charCodeAt(0) & 255);
-    return new TextDecoder('utf-8').decode(bytes);
-  } catch {
-    return value;
+  let next = value;
+  for (let index = 0; index < 3; index += 1) {
+    if (!/[РСЃСЂСЊС‹С€Тљ]/.test(next)) return next;
+    try {
+      const bytes = Uint8Array.from(Array.from(next), (char) => char.charCodeAt(0) & 255);
+      const decoded = new TextDecoder('utf-8').decode(bytes);
+      if (decoded === next) return next;
+      next = decoded;
+    } catch {
+      return next;
+    }
   }
+  return next;
 }

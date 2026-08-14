@@ -472,26 +472,26 @@ export function HomePage() {
           </div>
           <button onClick={() => setStep('history')}>{text.history}</button>
         </header>
-        <div className="safety-note">РќРёРєРѕРјСѓ РЅРµ СЃРѕРѕР±С‰Р°Р№С‚Рµ РїР°СЂРѕР»Рё, SMS-РєРѕРґС‹ Рё РґР°РЅРЅС‹Рµ Р±Р°РЅРєРѕРІСЃРєРѕР№ РєР°СЂС‚С‹. РќР°СЃС‚РѕСЏС‰РёР№ РїРѕРјРѕС‰РЅРёРє РЅРёРєРѕРіРґР° РЅРµ РґРѕР»Р¶РµРЅ РёС… РїСЂРѕСЃРёС‚СЊ.</div>
-        {isCheckingSafety ? <div className="ai-safety ai-safety--checking">РР РїСЂРѕРІРµСЂСЏРµС‚ РґРёР°Р»РѕРі РЅР° РјРѕС€РµРЅРЅРёС‡РµСЃС‚РІРѕ...</div> : null}
+        <div className="safety-note">{text.safetyNote}</div>
+        {isCheckingSafety ? <div className="ai-safety ai-safety--checking">{text.aiChecking}</div> : null}
         {aiSafety && aiSafety.risk !== 'safe' ? (
           <div className={`ai-safety ai-safety--${aiSafety.risk}`}>
-            <strong>{aiSafety.action === 'block' ? 'Р”РёР°Р»РѕРі РѕСЃС‚Р°РЅРѕРІР»РµРЅ' : 'РќСѓР¶РЅР° РѕСЃС‚РѕСЂРѕР¶РЅРѕСЃС‚СЊ'}</strong>
+            <strong>{aiSafety.action === 'block' ? text.dialogStopped : text.cautionNeeded}</strong>
             <p>{aiSafety.reason}</p>
           </div>
         ) : null}
         {risk ? (
           <div className="warning">
-            <strong>Р‘СѓРґСЊС‚Рµ РѕСЃС‚РѕСЂРѕР¶РЅС‹</strong>
-            <p>РќРµ СЃРѕРѕР±С‰Р°Р№С‚Рµ РєРѕРґС‹, РїР°СЂРѕР»Рё РёР»Рё Р±Р°РЅРєРѕРІСЃРєРёРµ РґР°РЅРЅС‹Рµ.</p>
-            <button onClick={() => submitReport('password', 'Р’ С‡Р°С‚Рµ РѕР±РЅР°СЂСѓР¶РµРЅ РїРѕС‚РµРЅС†РёР°Р»СЊРЅРѕ РѕРїР°СЃРЅС‹Р№ Р·Р°РїСЂРѕСЃ.')}>{text.suspicious}</button>
+            <strong>{text.beCareful}</strong>
+            <p>{text.safetyNote}</p>
+            <button onClick={() => submitReport('password', text.suspicious)}>{text.suspicious}</button>
           </div>
         ) : null}
-        {blockedChat ? <div className="warning">Р Р°Р·РіРѕРІРѕСЂ РѕСЃС‚Р°РЅРѕРІР»РµРЅ. Р­С‚РѕС‚ РїРѕРјРѕС‰РЅРёРє Р±РѕР»СЊС€Рµ РЅРµ СЃРјРѕР¶РµС‚ РЅР°РїРёСЃР°С‚СЊ РІР°Рј РІ СЌС‚РѕРј С‡Р°С‚Рµ.</div> : null}
+        {blockedChat ? <div className="warning">{text.blockedChat}</div> : null}
         <div className="chat-list">
           {messages.map((item) => (
             <div key={item.id} className={item.senderId === profile?.id ? 'message message--mine' : 'message'}>
-              {item.messageType === 'photo' && item.fileUrl ? <img className="message-media" src={item.fileUrl} alt={item.fileName ?? 'Р¤РѕС‚Рѕ'} /> : null}
+              {item.messageType === 'photo' && item.fileUrl ? <img className="message-media" src={item.fileUrl} alt={item.fileName ?? text.photo} /> : null}
               {item.messageType === 'video' && item.fileUrl ? <video className="message-media" src={item.fileUrl} controls /> : null}
               <p>{item.text}</p>
             </div>
