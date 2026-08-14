@@ -6,7 +6,6 @@ import { VolunteerCard } from '../components/VolunteerCard';
 import { analyzeChatSafety, type AiSafetyResult } from '../lib/aiSafety';
 import { achievements, elders, helpCategories } from '../lib/ryadomData';
 import {
-  addXP,
   blockUser,
   createHelpRequest,
   createHelpSession,
@@ -50,6 +49,18 @@ type ThemeMode = 'light' | 'dark';
 type FontMode = 'normal' | 'large';
 type BrowserAudioWindow = Window & typeof globalThis & {
   webkitAudioContext?: typeof AudioContext;
+};
+
+const friendsLeaderboard = [
+  { name: 'Алия', score: 43 },
+  { name: 'Данияр', score: 18 },
+  { name: 'Мария', score: 12 },
+];
+
+type LeaderboardRow = {
+  name: string;
+  score: number;
+  current: boolean;
 };
 
 export function HomePage() {
@@ -168,7 +179,9 @@ export function HomePage() {
 
     try {
       const fallbackName = nextRole === 'elder' ? uiText[language].needHelp : uiText[language].verifiedHelper;
-      const savedProfile = await createMyProfile(nextRole, session.user.user_metadata.full_name ?? fallbackName);
+      const meta = session.user.user_metadata;
+      const fullName = [meta.first_name, meta.last_name].filter((item): item is string => typeof item === 'string' && item.trim().length > 0).join(' ');
+      const savedProfile = await createMyProfile(nextRole, fullName || (typeof meta.full_name === 'string' ? meta.full_name : fallbackName));
       playEnterSound();
       setProfile(savedProfile);
       if (nextRole === 'volunteer') setVolunteerStats(await loadVolunteerStats(savedProfile.id));
@@ -598,11 +611,10 @@ export function HomePage() {
   }
 
   if (step === 'volunteerHome') {
-    const baseVolunteer = volunteer ?? findRandomVolunteer('any');
-    const demoStats = baseVolunteer ? addXP(baseVolunteer, 35).profile : null;
-    const xp = volunteerStats?.xp ?? demoStats?.xp ?? 0;
-    const level = volunteerStats?.level ?? demoStats?.level ?? 1;
-    const helped = volunteerStats?.people_helped ?? demoStats?.peopleHelped ?? 0;
+    const xp = volunteerStats?.xp ?? 0;
+    const level = volunteerStats?.level ?? 1;
+    const helped = volunteerStats?.people_helped ?? 0;
+    const ratingValue = volunteerStats?.rating ?? 0;
 
     return (
       <PhoneShell screenKey={step} language={language}>
@@ -621,15 +633,17 @@ export function HomePage() {
         </section>
         <div className="stats">
           <b><span>{helped}</span>{text.helpedCount}</b>
-          <b><span>{volunteerStats?.rating ?? demoStats?.rating ?? 4.9}</span>{text.score}</b>
+          <b><span>{ratingValue.toFixed(1)}</span>{text.score}</b>
           <b><span>{xp}</span>XP</b>
         </div>
+        {helped === 0 ? <p className="empty-state">{text.noActivity}</p> : null}
         <section className="level-card">
           <p>LEVEL {String(level).padStart(2, '0')}</p>
-          <h2>{volunteerStats?.title ?? demoStats?.title ?? text.reliableHelper}</h2>
+          <h2>{volunteerStats?.title ?? text.reliableHelper}</h2>
           <div className="progress"><span style={{ width: `${Math.min(100, (xp % 1000) / 10)}%` }} /></div>
           <small>{xp} / 1000 XP</small>
         </section>
+        <Leaderboard title={text.leaderboard} currentName={profileName} currentScore={helped} />
         <ActionButton onClick={() => setStep('incoming')}>{text.showRequest}</ActionButton>
         <BottomNav items={[text.help, text.progress, text.profile]} onSecond={() => setStep('volunteerProfile')} onThird={() => setStep('admin')} />
       </PhoneShell>
@@ -668,6 +682,25 @@ export function HomePage() {
   }
 
   return null;
+}
+
+function Leaderboard({ title, currentName, currentScore }: { title: string; currentName: string; currentScore: number }) {
+  const rows: LeaderboardRow[] = [{ name: currentName, score: currentScore, current: true }, ...friendsLeaderboard.map((friend) => ({ ...friend, current: false }))]
+    .sort((first, second) => second.score - first.score)
+    .slice(0, 4);
+
+  return (
+    <section className="leaderboard">
+      <h2>{title}</h2>
+      {rows.map((row, index) => (
+        <div key={`${row.name}-${index}`} className={row.current ? 'leaderboard-row leaderboard-row--me' : 'leaderboard-row'}>
+          <span>{index + 1}</span>
+          <strong>{row.name}</strong>
+          <b>{row.score}</b>
+        </div>
+      ))}
+    </section>
+  );
 }
 
 function LoadingScreen({ title }: { title: string }) {
@@ -724,11 +757,6 @@ function HistoryScreen({
             <p>{uiText[language].searchTitle}</p>
           </div>
         )}
-        <div className="history-item">
-          <span>{uiText[language].help}</span>
-          <strong>{uiText[language].chooseHelp}</strong>
-          <p>{uiText[language].done}</p>
-        </div>
       </div>
       <ActionButton onClick={onBack}>{uiText[language].back}</ActionButton>
     </PhoneShell>
@@ -841,7 +869,7 @@ function InfoScreen({
         ) : null}
         {step === 'safety' ? (
           <div className="settings-group">
-            <strong>{uiText[language].sound}</strong>
+            <strong>{uiText[language].gameSounds}</strong>
             <div className="theme-toggle" role="group" aria-label={uiText[language].sound}>
               <button className={soundEnabled ? 'active' : ''} onClick={() => onSoundChange(true)}>{uiText[language].soundOn}</button>
               <button className={!soundEnabled ? 'active' : ''} onClick={() => onSoundChange(false)}>{uiText[language].soundOff}</button>

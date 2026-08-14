@@ -13,6 +13,8 @@ type AuthPanelProps = {
 
 export function AuthPanel({ language, onGuest }: AuthPanelProps) {
   const text = uiText[language];
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
@@ -41,10 +43,14 @@ export function AuthPanel({ language, onGuest }: AuthPanelProps) {
     setMessage('');
     try {
       if (mode === 'signup') {
+        const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: window.location.origin },
+          options: {
+            emailRedirectTo: window.location.origin,
+            data: { first_name: firstName.trim(), last_name: lastName.trim(), full_name: fullName },
+          },
         });
         if (error) {
           setMessage(error.message);
@@ -82,6 +88,12 @@ export function AuthPanel({ language, onGuest }: AuthPanelProps) {
       {onGuest ? <ActionButton tone="calm" onClick={onGuest}>{text.guest}</ActionButton> : null}
 
       <form className="form-card" onSubmit={handleEmail}>
+        {mode === 'signup' ? (
+          <div className="name-grid">
+            <input type="text" placeholder={text.firstName} value={firstName} onChange={(event) => setFirstName(event.target.value)} required />
+            <input type="text" placeholder={text.lastName} value={lastName} onChange={(event) => setLastName(event.target.value)} required />
+          </div>
+        ) : null}
         <input type="email" placeholder="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
         <input type="password" placeholder={text.password} value={password} onChange={(event) => setPassword(event.target.value)} minLength={6} required />
         <button className="submit-button" disabled={busy}>{mode === 'signin' ? text.signIn : text.signUp}</button>
