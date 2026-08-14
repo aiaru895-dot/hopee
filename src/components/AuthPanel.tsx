@@ -23,7 +23,7 @@ export function AuthPanel({ language, onGuest }: AuthPanelProps) {
 
   if (!isSupabaseConfigured) {
     return (
-      <PhoneShell>
+      <PhoneShell screenKey="setup">
         <SupabaseSetupMessage />
       </PhoneShell>
     );
@@ -74,40 +74,49 @@ export function AuthPanel({ language, onGuest }: AuthPanelProps) {
   }
 
   return (
-    <PhoneShell>
+    <PhoneShell screenKey="auth">
       <section className="app-intro" aria-hidden="true">
         <img src="/app-icon.svg" alt="" />
         <strong>KOMEQ</strong>
       </section>
-      <section className="login-hero">
-        <img className="brand-symbol brand-symbol--hero" src="/app-icon.svg" alt="" aria-hidden="true" />
-        <p className="eyebrow">{text.service}</p>
-        <h1>KOMEQ</h1>
-        <p className="brand-tagline">Generations helping generations.</p>
-        <p>{text.intro}</p>
-      </section>
-
-      <ActionButton onClick={handleGoogle} disabled={busy}>{text.google}</ActionButton>
-
-      {onGuest ? <ActionButton tone="calm" onClick={onGuest}>{text.guest}</ActionButton> : null}
-
-      <form className="form-card" onSubmit={handleEmail}>
-        {mode === 'signup' ? (
-          <div className="name-grid">
-            <input type="text" placeholder={text.firstName} value={firstName} onChange={(event) => setFirstName(event.target.value)} required />
-            <input type="text" placeholder={text.lastName} value={lastName} onChange={(event) => setLastName(event.target.value)} required />
+      <header className="desktop-app-header">
+        <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />KOMEQ</strong>
+        <span>{text.service}</span>
+      </header>
+      <div className="auth-layout">
+        <section className="login-hero">
+          <img className="brand-symbol brand-symbol--hero" src="/app-icon.svg" alt="" aria-hidden="true" />
+          <p className="eyebrow">{text.service}</p>
+          <h1>KOMEQ</h1>
+          <p className="brand-tagline">Generations helping generations.</p>
+          <p>{text.intro}</p>
+        </section>
+        <section className="auth-card">
+          <div className="auth-card__header">
+            <p className="eyebrow">{mode === 'signin' ? text.signIn : text.signUp}</p>
+            <h2>{mode === 'signin' ? text.signIn : text.signUp}</h2>
           </div>
-        ) : null}
-        <input type="email" placeholder="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
-        <input type="password" placeholder={text.password} value={password} onChange={(event) => setPassword(event.target.value)} minLength={6} required />
-        <button className="submit-button" disabled={busy}>{mode === 'signin' ? text.signIn : text.signUp}</button>
-      </form>
-
-      {message ? <p className="message">{message}</p> : null}
-
-      <ActionButton tone="ghost" onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}>
-        {mode === 'signin' ? text.signUp : text.haveAccount}
-      </ActionButton>
+          <div className="auth-actions">
+            <ActionButton onClick={handleGoogle} disabled={busy}>{text.google}</ActionButton>
+            {onGuest ? <ActionButton tone="calm" onClick={onGuest}>{text.guest}</ActionButton> : null}
+          </div>
+          <form className="form-card" onSubmit={handleEmail}>
+            {mode === 'signup' ? (
+              <div className="name-grid">
+                <input type="text" placeholder={text.firstName} value={firstName} onChange={(event) => setFirstName(event.target.value)} required />
+                <input type="text" placeholder={text.lastName} value={lastName} onChange={(event) => setLastName(event.target.value)} required />
+              </div>
+            ) : null}
+            <input type="email" placeholder="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+            <input type="password" placeholder={text.password} value={password} onChange={(event) => setPassword(event.target.value)} minLength={6} required />
+            <button className="submit-button" disabled={busy}>{mode === 'signin' ? text.signIn : text.signUp}</button>
+          </form>
+          {message ? <p className="message">{message}</p> : null}
+          <ActionButton tone="ghost" onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}>
+            {mode === 'signin' ? text.signUp : text.haveAccount}
+          </ActionButton>
+        </section>
+      </div>
     </PhoneShell>
   );
 }

@@ -691,7 +691,16 @@ export function HomePage() {
       <PhoneShell screenKey={step} language={language}>
         <ScreenHeader title={text.thanksTitle} subtitle={text.ratingSubtitle} />
         <div className="rating-scale">
-          {[1, 2, 3, 4, 5].map((star) => <button key={star} onClick={() => setRating(star)} className={star <= rating ? 'active' : ''}>{star}</button>)}
+          {[1, 2, 3, 4, 5].map((star) => (
+            <button
+              key={star}
+              onClick={() => setRating(star)}
+              className={star <= rating ? 'active' : ''}
+              aria-label={`Оценка ${star} из 5`}
+            >
+              {star <= rating ? '★' : '☆'}
+            </button>
+          ))}
         </div>
         <ActionButton onClick={finishRating}>{text.done}</ActionButton>
         <ActionButton tone="ghost" onClick={() => setStep('safety')}>{text.complaint}</ActionButton>
