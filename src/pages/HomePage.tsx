@@ -462,6 +462,7 @@ export function HomePage() {
     return (
       <PhoneShell screenKey={step} language={language}>
         <ScreenHeader title={text.roleTitle} subtitle={text.roleSubtitle} />
+        <RoleChoiceHero />
         {message ? <p className="message">{message}</p> : null}
         <div className="stack">
           <ActionButton onClick={() => chooseRole('elder')}>{text.needHelp}</ActionButton>
@@ -800,6 +801,41 @@ function LoadingScreen({ title }: { title: string }) {
         <h1>{title}</h1>
       </section>
     </PhoneShell>
+  );
+}
+
+function RoleChoiceHero() {
+  return (
+    <section className="role-hero" aria-hidden="true">
+      <div className="role-hero__glow" />
+      <svg className="role-hero__art" viewBox="0 0 360 210" role="img">
+        <path className="role-hero__ground" d="M58 178 C92 160, 143 162, 179 175 C216 188, 268 191, 308 172" />
+        <g className="role-person role-person--elder">
+          <circle cx="120" cy="64" r="37" fill="#f1c6ad" />
+          <path d="M83 65 C84 30, 104 15, 130 22 C157 30, 164 51, 155 78 C143 69, 108 68, 83 65 Z" fill="#f7f1eb" />
+          <path d="M89 53 C85 83, 95 98, 115 99 C98 108, 78 94, 76 71 C74 56, 80 47, 89 53 Z" fill="#f7f1eb" />
+          <path d="M153 54 C162 84, 150 100, 130 99 C148 110, 168 94, 166 71 C165 57, 161 48, 153 54 Z" fill="#f7f1eb" />
+          <circle cx="107" cy="66" r="3" fill="#3c3033" />
+          <circle cx="132" cy="66" r="3" fill="#3c3033" />
+          <path d="M109 82 C116 89, 126 89, 133 82" fill="none" stroke="#8d5f56" strokeWidth="4" strokeLinecap="round" />
+          <path d="M81 180 C83 127, 97 105, 121 105 C148 105, 161 128, 164 180 Z" fill="#b85c78" />
+          <path d="M96 118 C112 134, 133 134, 149 118" fill="none" stroke="#faeef1" strokeWidth="7" strokeLinecap="round" />
+          <path d="M83 143 C58 147, 50 163, 62 176" fill="none" stroke="#f1c6ad" strokeWidth="13" strokeLinecap="round" />
+        </g>
+        <g className="role-person role-person--volunteer">
+          <circle cx="239" cy="60" r="34" fill="#d99a75" />
+          <path d="M203 59 C207 27, 229 13, 255 23 C274 31, 282 48, 279 68 C260 57, 232 55, 203 59 Z" fill="#3e3a3d" />
+          <circle cx="227" cy="63" r="3" fill="#2c2528" />
+          <circle cx="251" cy="63" r="3" fill="#2c2528" />
+          <path d="M228 79 C236 86, 246 86, 253 79" fill="none" stroke="#7a3e32" strokeWidth="4" strokeLinecap="round" />
+          <path d="M197 180 C201 126, 216 101, 240 101 C269 101, 287 128, 292 180 Z" fill="#4f7f67" />
+          <path d="M218 107 L239 132 L261 107" fill="none" stroke="#edf6f1" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M200 139 C178 145, 157 153, 142 166" fill="none" stroke="#d99a75" strokeWidth="13" strokeLinecap="round" />
+          <path d="M145 166 C136 173, 126 173, 119 166" fill="none" stroke="#d99a75" strokeWidth="10" strokeLinecap="round" />
+        </g>
+        <path className="role-heart" d="M179 91 C174 82, 160 83, 160 96 C160 109, 179 118, 179 118 C179 118, 199 108, 199 96 C199 83, 184 82, 179 91 Z" />
+      </svg>
+    </section>
   );
 }
 
