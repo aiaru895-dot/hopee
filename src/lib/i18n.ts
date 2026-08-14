@@ -30,10 +30,26 @@ const ru = {
   beCareful: '\u0411\u0443\u0434\u044c\u0442\u0435 \u043e\u0441\u0442\u043e\u0440\u043e\u0436\u043d\u044b',
   cautionNeeded: '\u041d\u0443\u0436\u043d\u0430 \u043e\u0441\u0442\u043e\u0440\u043e\u0436\u043d\u043e\u0441\u0442\u044c',
   blockedChat: '\u0420\u0430\u0437\u0433\u043e\u0432\u043e\u0440 \u043e\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d. \u042d\u0442\u043e\u0442 \u043f\u043e\u043c\u043e\u0449\u043d\u0438\u043a \u0431\u043e\u043b\u044c\u0448\u0435 \u043d\u0435 \u0441\u043c\u043e\u0436\u0435\u0442 \u043d\u0430\u043f\u0438\u0441\u0430\u0442\u044c \u0432\u0430\u043c \u0432 \u044d\u0442\u043e\u043c \u0447\u0430\u0442\u0435.',
+  unsafeTitle: '\u0412\u0430\u043c \u043d\u0435\u0431\u0435\u0437\u043e\u043f\u0430\u0441\u043d\u043e?',
+  unsafeSubtitle: '\u041c\u043e\u0436\u043d\u043e \u0441\u0440\u0430\u0437\u0443 \u043f\u0440\u0435\u043a\u0440\u0430\u0442\u0438\u0442\u044c \u043f\u043e\u043c\u043e\u0449\u044c \u0438 \u0437\u0430\u0431\u043b\u043e\u043a\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f.',
+  blockedTitle: '\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c \u0437\u0430\u0431\u043b\u043e\u043a\u0438\u0440\u043e\u0432\u0430\u043d',
+  blockedSubtitle: '\u0420\u0430\u0437\u0433\u043e\u0432\u043e\u0440 \u043e\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d. \u0416\u0430\u043b\u043e\u0431\u0430 \u043e\u0442\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0430 \u043d\u0430 \u043f\u0440\u043e\u0432\u0435\u0440\u043a\u0443.',
+  blockedHelp: '\u0412\u044b \u043c\u043e\u0436\u0435\u0442\u0435 \u0432\u0435\u0440\u043d\u0443\u0442\u044c\u0441\u044f \u043d\u0430 \u0433\u043b\u0430\u0432\u043d\u044b\u0439 \u044d\u043a\u0440\u0430\u043d \u0438 \u043d\u0430\u0439\u0442\u0438 \u0434\u0440\u0443\u0433\u043e\u0433\u043e \u043f\u043e\u043c\u043e\u0449\u043d\u0438\u043a\u0430.',
+  thanksTitle: '\u0421\u043f\u0430\u0441\u0438\u0431\u043e',
+  ratingSubtitle: '\u041e\u0446\u0435\u043d\u0438\u0442\u0435 \u0440\u0430\u0431\u043e\u0442\u0443 \u043f\u043e\u043c\u043e\u0449\u043d\u0438\u043a\u0430.',
+  hello: '\u0417\u0434\u0440\u0430\u0432\u0441\u0442\u0432\u0443\u0439\u0442\u0435',
+  helpStatus: '\u0421\u0442\u0430\u0442\u0443\u0441 \u043f\u043e\u043c\u043e\u0449\u0438',
+  readiness: '\u0413\u043e\u0442\u043e\u0432\u043d\u043e\u0441\u0442\u044c',
+  readyToHelp: '\u0413\u043e\u0442\u043e\u0432\u0430 \u043f\u043e\u043c\u043e\u0433\u0430\u0442\u044c',
+  readyDescription: '\u0412\u044b \u0431\u0443\u0434\u0435\u0442\u0435 \u043f\u043e\u043b\u0443\u0447\u0430\u0442\u044c \u0437\u0430\u043f\u0440\u043e\u0441\u044b, \u043a\u043e\u0433\u0434\u0430 \u043a\u043e\u043c\u0443-\u0442\u043e \u043f\u043e\u043d\u0430\u0434\u043e\u0431\u0438\u0442\u0441\u044f \u043f\u043e\u043c\u043e\u0449\u044c.',
+  score: '\u043e\u0446\u0435\u043d\u043a\u0430',
+  reliableHelper: '\u041d\u0430\u0434\u0435\u0436\u043d\u044b\u0439 \u043f\u043e\u043c\u043e\u0449\u043d\u0438\u043a',
+  incomingTitle: '\u041d\u043e\u0432\u044b\u0439 \u0437\u0430\u043f\u0440\u043e\u0441',
+  incomingSubtitle: '\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044e \u043d\u0443\u0436\u043d\u0430 \u043f\u043e\u043c\u043e\u0449\u044c \u0432 \u0447\u0430\u0442\u0435.',
 };
 
 const en: typeof ru = {
-  service: 'Support service', intro: 'Safe help with phones and everyday digital questions.', google: 'Continue with Google', guest: 'Continue as guest', signIn: 'Sign in', signUp: 'Create account', haveAccount: 'I already have an account', password: 'password', roleTitle: 'Good day', roleSubtitle: 'Choose how you want to use the service.', needHelp: 'I need help', wantHelp: 'I want to help', exit: 'Exit', settings: 'Settings', help: 'Help', history: 'History', profile: 'Profile', progress: 'Progress', chooseHelp: 'Choose help type', anyHelper: 'Find any helper', back: 'Back', cancelSearch: 'Cancel search', startChat: 'Start chat', otherHelper: 'Another helper', send: 'Send', photo: 'Photo', voice: 'Voice', video: 'Video', complaint: 'Report', unsafe: 'I feel unsafe', block: 'Block', finishHelp: 'Finish help', done: 'Done', showRequest: 'Show request', accept: 'Accept', notNow: 'Not now', theme: 'App theme', defaultTheme: 'Default', darkTheme: 'Dark', textSize: 'Text size', normalText: 'Normal', largeText: 'Large', sound: 'Sound', soundOn: 'On', soundOff: 'Off', language: 'Language', signOut: 'Sign out', messagePlaceholder: 'Write a message...', retry: 'Check again', suspicious: 'This is suspicious', yesStop: 'Yes, stop', cancel: 'Cancel', home: 'Go home', submitReport: 'Send report', categoryTitle: 'What do you need help with?', searchTitle: 'Finding a helper', searchEyebrow: 'Searching', foundTitle: 'Helper found', verifiedHelper: 'Verified helper', rating: 'rating', helpedCount: 'helps', ad: 'Ad space', safetyNote: 'Never share passwords, SMS codes, PINs, or bank card details. A real helper should never ask for them.', aiChecking: 'AI is checking the dialog for fraud...', dialogStopped: 'Dialog stopped', beCareful: 'Be careful', cautionNeeded: 'Caution needed', blockedChat: 'The conversation has been stopped. This helper can no longer message you in this chat.',
+  service: 'Support service', intro: 'Safe help with phones and everyday digital questions.', google: 'Continue with Google', guest: 'Continue as guest', signIn: 'Sign in', signUp: 'Create account', haveAccount: 'I already have an account', password: 'password', roleTitle: 'Good day', roleSubtitle: 'Choose how you want to use the service.', needHelp: 'I need help', wantHelp: 'I want to help', exit: 'Exit', settings: 'Settings', help: 'Help', history: 'History', profile: 'Profile', progress: 'Progress', chooseHelp: 'Choose help type', anyHelper: 'Find any helper', back: 'Back', cancelSearch: 'Cancel search', startChat: 'Start chat', otherHelper: 'Another helper', send: 'Send', photo: 'Photo', voice: 'Voice', video: 'Video', complaint: 'Report', unsafe: 'I feel unsafe', block: 'Block', finishHelp: 'Finish help', done: 'Done', showRequest: 'Show request', accept: 'Accept', notNow: 'Not now', theme: 'App theme', defaultTheme: 'Default', darkTheme: 'Dark', textSize: 'Text size', normalText: 'Normal', largeText: 'Large', sound: 'Sound', soundOn: 'On', soundOff: 'Off', language: 'Language', signOut: 'Sign out', messagePlaceholder: 'Write a message...', retry: 'Check again', suspicious: 'This is suspicious', yesStop: 'Yes, stop', cancel: 'Cancel', home: 'Go home', submitReport: 'Send report', categoryTitle: 'What do you need help with?', searchTitle: 'Finding a helper', searchEyebrow: 'Searching', foundTitle: 'Helper found', verifiedHelper: 'Verified helper', rating: 'rating', helpedCount: 'helps', ad: 'Ad space', safetyNote: 'Never share passwords, SMS codes, PINs, or bank card details. A real helper should never ask for them.', aiChecking: 'AI is checking the dialog for fraud...', dialogStopped: 'Dialog stopped', beCareful: 'Be careful', cautionNeeded: 'Caution needed', blockedChat: 'The conversation has been stopped. This helper can no longer message you in this chat.', unsafeTitle: 'Do you feel unsafe?', unsafeSubtitle: 'You can stop help immediately and block the user.', blockedTitle: 'User blocked', blockedSubtitle: 'The conversation has stopped. The report was sent for review.', blockedHelp: 'You can return home and find another helper.', thanksTitle: 'Thank you', ratingSubtitle: 'Rate the helper.', hello: 'Hello', helpStatus: 'Help status', readiness: 'Readiness', readyToHelp: 'Ready to help', readyDescription: 'You will receive requests when someone needs help.', score: 'score', reliableHelper: 'Reliable helper', incomingTitle: 'New request', incomingSubtitle: 'A user needs help in chat.',
 };
 
 const kk: typeof ru = {
@@ -42,19 +58,3 @@ const kk: typeof ru = {
 };
 
 export const uiText = { ru, kk, en } as const;
-
-export function fixMojibake(value: string): string {
-  let next = value;
-  for (let index = 0; index < 3; index += 1) {
-    if (!/[РСЃСЂСЊС‹С€Тљ]/.test(next)) return next;
-    try {
-      const bytes = Uint8Array.from(Array.from(next), (char) => char.charCodeAt(0) & 255);
-      const decoded = new TextDecoder('utf-8').decode(bytes);
-      if (decoded === next) return next;
-      next = decoded;
-    } catch {
-      return next;
-    }
-  }
-  return next;
-}

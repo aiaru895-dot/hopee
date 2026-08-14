@@ -1,4 +1,4 @@
-import { achievements, starterMessages, volunteers } from './ryadomData';
+﻿import { achievements, starterMessages, volunteers } from './ryadomData';
 import type { ChatMessage, HelpCategory, HelpSession, MatchRequest, ReportReason, SafetyReport, User, Volunteer } from './ryadomTypes';
 
 let liveVolunteers = volunteers.map((volunteer) => structuredClone(volunteer));

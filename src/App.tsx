@@ -1,4 +1,4 @@
-import { Route, Switch } from 'wouter';
+﻿import { Route, Switch } from 'wouter';
 import { HomePage } from './pages/HomePage';
 import { NotFoundPage } from './pages/NotFoundPage';
 

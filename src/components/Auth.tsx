@@ -1,8 +1,7 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { SupabaseSetupMessage } from './SupabaseSetupMessage';
 
-// Вход и регистрация по email + паролю. Это пример — Codex поможет улучшить (Google-вход и т.д.).
 export function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -27,9 +26,9 @@ export function Auth() {
           : supabase.auth.signInWithPassword({ email, password });
       const { error } = await fn;
       if (error) setMessage(error.message);
-      else if (mode === 'signup') setMessage('Готово! Проверь почту, если нужна подтверждалка.');
+      else if (mode === 'signup') setMessage('Готово! Проверь почту, если нужно подтверждение.');
     } catch {
-      setMessage('Что-то пошло не так. Попробуй ещё раз.');
+      setMessage('Что-то пошло не так. Попробуй еще раз.');
     } finally {
       setBusy(false);
     }
@@ -39,13 +38,7 @@ export function Auth() {
     <section className="card">
       <h2>{mode === 'signin' ? 'Вход' : 'Регистрация'}</h2>
       <form onSubmit={handleSubmit} className="form">
-        <input
-          type="email"
-          placeholder="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
+        <input type="email" placeholder="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         <input
           type="password"
           placeholder="пароль (6+ символов)"
@@ -55,14 +48,11 @@ export function Auth() {
           required
         />
         <button type="submit" disabled={busy}>
-          {busy ? '…' : mode === 'signin' ? 'Войти' : 'Создать аккаунт'}
+          {busy ? '...' : mode === 'signin' ? 'Войти' : 'Создать аккаунт'}
         </button>
       </form>
       {message && <p className="message">{message}</p>}
-      <button
-        className="ghost"
-        onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
-      >
+      <button className="ghost" onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}>
         {mode === 'signin' ? 'Нет аккаунта? Зарегистрируйся' : 'Уже есть аккаунт? Войти'}
       </button>
     </section>

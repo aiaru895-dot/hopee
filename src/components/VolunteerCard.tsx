@@ -1,6 +1,6 @@
 ﻿import { helpCategories } from '../lib/ryadomData';
 import type { Language } from '../lib/i18n';
-import { fixMojibake, uiText } from '../lib/i18n';
+import { uiText } from '../lib/i18n';
 import type { Volunteer } from '../lib/ryadomTypes';
 import { Avatar, StatusPill } from './RyadomUi';
 
@@ -8,15 +8,14 @@ export function VolunteerCard({ volunteer, language }: { volunteer: Volunteer; l
   const text = uiText[language];
   const labels = volunteer.profile.skills
     .map((skill) => helpCategories.find((category) => category.id === skill)?.label)
-    .filter((label): label is string => Boolean(label))
-    .map((label) => fixMojibake(label));
+    .filter((label): label is string => Boolean(label));
 
   return (
     <article className="volunteer-card">
-      <Avatar value={fixMojibake(volunteer.avatar)} />
+      <Avatar value={volunteer.avatar} />
       <div className="volunteer-card__body">
         <StatusPill>{text.verifiedHelper}</StatusPill>
-        <h2>{fixMojibake(volunteer.name)} K.</h2>
+        <h2>{volunteer.name} K.</h2>
         <div className="metric-row">
           <span>{volunteer.profile.rating.toFixed(1)} {text.rating}</span>
           <span>{volunteer.profile.peopleHelped} {text.helpedCount}</span>

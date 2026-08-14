@@ -1,10 +1,7 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { SupabaseSetupMessage } from './SupabaseSetupMessage';
 
-// Пример работы с базой: читаем, добавляем и удаляем свои записи.
-// Таблица `entries` создаётся миграцией в supabase/migrations/. Переделай это под свою идею:
-// вопросы для квиза, привычки, места, карточки — что угодно.
 type Entry = {
   id: string;
   title: string;
@@ -50,22 +47,15 @@ export function Entries({ userEmail }: { userEmail: string }) {
 
   return (
     <section className="card">
-      <p className="hello">Привет, {userEmail} 👋</p>
+      <p className="hello">Привет, {userEmail}</p>
       <h2>Мои записи</h2>
-
       <form onSubmit={add} className="form-row">
-        <input
-          placeholder="что добавить…"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
+        <input placeholder="что добавить..." value={title} onChange={(e) => setTitle(e.target.value)} />
         <button type="submit">Добавить</button>
       </form>
-
       {error && <p className="message">{error}</p>}
-
       {entries.length === 0 ? (
-        <p className="empty">Пока пусто. Добавь первую запись 👆</p>
+        <p className="empty">Пока пусто. Добавь первую запись</p>
       ) : (
         <ul className="list">
           {entries.map((it) => (

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { signInWithGoogle } from '../lib/ryadomProfile';
 import type { Language } from '../lib/i18n';
@@ -39,13 +39,28 @@ export function AuthPanel({ language, onGuest }: AuthPanelProps) {
     event.preventDefault();
     setBusy(true);
     setMessage('');
-    const result =
-      mode === 'signup'
-        ? await supabase.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin } })
-        : await supabase.auth.signInWithPassword({ email, password });
-    if (result.error) setMessage(result.error.message);
-    else if (mode === 'signup') setMessage('Проверьте почту, если Supabase попросит подтверждение.');
-    setBusy(false);
+    try {
+      if (mode === 'signup') {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: window.location.origin },
+        });
+        if (error) {
+          setMessage(error.message);
+          return;
+        }
+        if (data.session) return;
+        setMode('signin');
+        setMessage('Аккаунт создан. Подтвердите email в письме, потом войдите здесь.');
+        return;
+      }
+
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) setMessage('Не получилось войти. Проверьте email, пароль и подтверждение почты.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (

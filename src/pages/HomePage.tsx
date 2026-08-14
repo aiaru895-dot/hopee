@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { AuthPanel } from '../components/AuthPanel';
 import { ActionButton, PhoneShell, ScreenHeader, TileButton } from '../components/RyadomUi';
@@ -22,7 +22,7 @@ import {
 import { createMyProfile, loadMyProfile, loadVolunteerStats, type ProfileRow, type VolunteerProfileRow } from '../lib/ryadomProfile';
 import { supabase } from '../lib/supabase';
 import type { Language } from '../lib/i18n';
-import { fixMojibake, languageNames, uiText } from '../lib/i18n';
+import { languageNames, uiText } from '../lib/i18n';
 import type { Achievement, ChatMessage, HelpCategory, HelpSession, ReportReason, Role, Volunteer } from '../lib/ryadomTypes';
 
 type Step =
@@ -150,7 +150,7 @@ export function HomePage() {
         id: elders[0].id,
         auth_user_id: 'guest',
         role: nextRole,
-        name: 'Р“РѕСЃС‚СЊ',
+        name: 'Guest',
         age: null,
         city: null,
         avatar_url: null,
@@ -161,14 +161,14 @@ export function HomePage() {
     if (!session) return;
 
     try {
-      const fallbackName = nextRole === 'elder' ? 'Р’Р°Р»РµРЅС‚РёРЅР°' : 'РџРѕРјРѕС‰РЅРёРє';
+      const fallbackName = nextRole === 'elder' ? uiText[language].needHelp : uiText[language].verifiedHelper;
       const savedProfile = await createMyProfile(nextRole, session.user.user_metadata.full_name ?? fallbackName);
       playEnterSound();
       setProfile(savedProfile);
       if (nextRole === 'volunteer') setVolunteerStats(await loadVolunteerStats(savedProfile.id));
       setStep(nextRole === 'elder' ? 'elderHome' : 'volunteerHome');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ РїСЂРѕС„РёР»СЊ.');
+      setMessage(error instanceof Error ? error.message : uiText[language].retry);
     }
   };
 
@@ -287,9 +287,9 @@ export function HomePage() {
     const textByType = {
       text: '',
       system: '',
-      voice: 'Р“РѕР»РѕСЃРѕРІРѕРµ СЃРѕРѕР±С‰РµРЅРёРµ, 12 СЃРµРєСѓРЅРґ',
-      photo: 'Р¤РѕС‚Рѕ РѕС‚РїСЂР°РІР»РµРЅРѕ',
-      video: 'РљРѕСЂРѕС‚РєРѕРµ РІРёРґРµРѕ РѕС‚РїСЂР°РІР»РµРЅРѕ',
+      voice: uiText[language].voice,
+      photo: uiText[language].photo,
+      video: uiText[language].video,
     };
     setMessages((items) => [...items, createMessage(helpSession.id, profile?.id ?? elders[0].id, type, textByType[type])]);
   };
@@ -297,7 +297,7 @@ export function HomePage() {
   const sendSelectedFile = (type: 'photo' | 'video', file?: File) => {
     if (!helpSession || !file || blockedChat) return;
     const url = URL.createObjectURL(file);
-    const fallbackText = type === 'photo' ? 'Р¤РѕС‚Рѕ' : 'Р’РёРґРµРѕ';
+    const fallbackText = type === 'photo' ? uiText[language].photo : uiText[language].video;
     setMessages((items) => [
       ...items,
       createMessage(helpSession.id, profile?.id ?? elders[0].id, type, file.name || fallbackText, { url, name: file.name || fallbackText }),
@@ -338,8 +338,8 @@ export function HomePage() {
   };
 
   const stopUnsafeHelp = () => {
-    submitReport('bad_behavior', 'РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ РЅР°Р¶Р°Р» РєРЅРѕРїРєСѓ "РњРЅРµ РЅРµР±РµР·РѕРїР°СЃРЅРѕ".');
-    blockCurrentVolunteer();
+    submitReport('bad_behavior', uiText[language].unsafe);
+    submitReport('bad_behavior', uiText[language].unsafe);
   };
 
   const finishRating = async () => {
@@ -364,7 +364,7 @@ export function HomePage() {
 
   if (!session && !guestMode) return <AuthPanel language={language} onGuest={enterAsGuest} />;
 
-  if (step === 'loading') return <LoadingScreen title="Р—Р°РіСЂСѓР¶Р°РµРј" />;
+  if (step === 'loading') return <LoadingScreen title={text.searchEyebrow} />;
 
   if (step === 'role') {
     return (
@@ -383,9 +383,9 @@ export function HomePage() {
   if (step === 'databaseSetup') {
     return (
       <PhoneShell screenKey={step} language={language}>
-        <ScreenHeader title="РќСѓР¶РЅРѕ РїРѕРґРєР»СЋС‡РёС‚СЊ Р±Р°Р·Сѓ" subtitle="Р’С…РѕРґ СЂР°Р±РѕС‚Р°РµС‚, РЅРѕ С‚Р°Р±Р»РёС†С‹ РїСЂРёР»РѕР¶РµРЅРёСЏ РµС‰Рµ РЅРµ Р·Р°РїРёСЃР°РЅС‹ РІ Supabase." />
+        <ScreenHeader title={text.retry} subtitle={text.intro} />
         <div className="info-list">
-          <p>Р—Р°РїСѓСЃС‚РёС‚Рµ РјРёРіСЂР°С†РёРё Supabase. РџРѕСЃР»Рµ СЌС‚РѕРіРѕ РїСЂРѕС„РёР»СЊ Рё СЃС‚Р°С‚РёСЃС‚РёРєР° Р±СѓРґСѓС‚ СЃРѕС…СЂР°РЅСЏС‚СЊСЃСЏ.</p>
+          <p>{text.intro}</p>
           <p>{databaseError}</p>
         </div>
         <ActionButton onClick={() => window.location.reload()}>{text.retry}</ActionButton>
@@ -402,8 +402,7 @@ export function HomePage() {
           <button onClick={() => setStep('safety')}>{text.settings}</button>
         </header>
         <section className="home-panel">
-          <p className="eyebrow">{text.roleTitle}, {fixMojibake(profile?.name ?? 'Р’Р°Р»РµРЅС‚РёРЅР°')}</p>
-          <h1>{text.needHelp}</h1>
+          <p className="eyebrow">{text.roleTitle}, {profile?.name ?? 'Aliya'}</p>
           <p>{text.intro}</p>
           <ActionButton onClick={() => setStep('category')}>{text.chooseHelp}</ActionButton>
         </section>
@@ -423,7 +422,7 @@ export function HomePage() {
         <ActionButton onClick={() => startSearch('any')}>{text.anyHelper}</ActionButton>
         <div className="grid">
           {helpCategories.filter((item) => item.id !== 'any').map((item) => (
-            <TileButton key={item.id} icon="" label={fixMojibake(item.label)} onClick={() => startSearch(item.id)} />
+            <TileButton key={item.id} icon="" label={item.label} onClick={() => startSearch(item.id)} />
           ))}
         </div>
         <ActionButton tone="ghost" onClick={() => setStep('elderHome')}>{text.back}</ActionButton>
@@ -453,7 +452,7 @@ export function HomePage() {
   if (step === 'found' && volunteer) {
     return (
       <PhoneShell screenKey={step} language={language}>
-        <ScreenHeader title={text.foundTitle} subtitle={`${text.theme}: ${fixMojibake(helpCategories.find((item) => item.id === category)?.label ?? '')}`} />
+        <ScreenHeader title={text.foundTitle} subtitle={`${text.theme}: ${helpCategories.find((item) => item.id === category)?.label ?? ''}`} />
         <VolunteerCard volunteer={volunteer} language={language} />
         <ActionButton onClick={() => setStep('chat')}>{text.startChat}</ActionButton>
         <ActionButton tone="ghost" onClick={() => startSearch(category)}>{text.otherHelper}</ActionButton>
@@ -467,7 +466,7 @@ export function HomePage() {
       <PhoneShell screenKey={step} language={language}>
         <header className="chat-header">
           <div>
-            <h1>{fixMojibake(volunteer.name)} K.</h1>
+            <h1>{volunteer.name} K.</h1>
             <p>{text.verifiedHelper}</p>
           </div>
           <button onClick={() => setStep('history')}>{text.history}</button>
@@ -559,7 +558,7 @@ export function HomePage() {
   if (step === 'unsafe') {
     return (
       <PhoneShell screenKey={step} language={language}>
-        <ScreenHeader title="Р’Р°Рј РЅРµР±РµР·РѕРїР°СЃРЅРѕ?" subtitle="РњРѕР¶РЅРѕ СЃСЂР°Р·Сѓ РїСЂРµРєСЂР°С‚РёС‚СЊ РїРѕРјРѕС‰СЊ Рё Р·Р°Р±Р»РѕРєРёСЂРѕРІР°С‚СЊ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ." />
+        <ScreenHeader title={text.unsafeTitle} subtitle={text.unsafeSubtitle} />
         <ActionButton tone="danger" onClick={stopUnsafeHelp}>{text.yesStop}</ActionButton>
         <ActionButton tone="ghost" onClick={() => setStep('chat')}>{text.cancel}</ActionButton>
       </PhoneShell>
@@ -569,10 +568,10 @@ export function HomePage() {
   if (step === 'blocked') {
     return (
       <PhoneShell screenKey={step} language={language}>
-        <ScreenHeader title="РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ Р·Р°Р±Р»РѕРєРёСЂРѕРІР°РЅ" subtitle="Р Р°Р·РіРѕРІРѕСЂ РѕСЃС‚Р°РЅРѕРІР»РµРЅ. Р–Р°Р»РѕР±Р° РѕС‚РїСЂР°РІР»РµРЅР° РЅР° РїСЂРѕРІРµСЂРєСѓ." />
+        <ScreenHeader title={text.blockedTitle} subtitle={text.blockedSubtitle} />
         <div className="info-list">
-          <p>Р’С‹ РјРѕР¶РµС‚Рµ РІРµСЂРЅСѓС‚СЊСЃСЏ РЅР° РіР»Р°РІРЅС‹Р№ СЌРєСЂР°РЅ Рё РЅР°Р№С‚Рё РґСЂСѓРіРѕРіРѕ РїРѕРјРѕС‰РЅРёРєР°.</p>
-          <p>РџР°СЂРѕР»Рё, SMS-РєРѕРґС‹ Рё Р±Р°РЅРєРѕРІСЃРєРёРµ РґР°РЅРЅС‹Рµ РЅРёРєРѕРјСѓ СЃРѕРѕР±С‰Р°С‚СЊ РЅРµР»СЊР·СЏ.</p>
+          <p>{text.blockedHelp}</p>
+          <p>{text.safetyNote}</p>
         </div>
         <ActionButton onClick={() => setStep('elderHome')}>{text.home}</ActionButton>
       </PhoneShell>
@@ -582,7 +581,7 @@ export function HomePage() {
   if (step === 'rating') {
     return (
       <PhoneShell screenKey={step} language={language}>
-        <ScreenHeader title="РЎРїР°СЃРёР±Рѕ" subtitle="РћС†РµРЅРёС‚Рµ СЂР°Р±РѕС‚Сѓ РїРѕРјРѕС‰РЅРёРєР°." />
+        <ScreenHeader title={text.thanksTitle} subtitle={text.ratingSubtitle} />
         <div className="rating-scale">
           {[1, 2, 3, 4, 5].map((star) => <button key={star} onClick={() => setRating(star)} className={star <= rating ? 'active' : ''}>{star}</button>)}
         </div>
@@ -605,23 +604,23 @@ export function HomePage() {
           <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />KOMEK</strong>
           <button onClick={() => setStep('admin')}>{text.profile}</button>
         </header>
-        <ScreenHeader title={`Р—РґСЂР°РІСЃС‚РІСѓР№С‚Рµ, ${profile?.name ?? 'РђР»РёСЏ'}`} subtitle="РЎС‚Р°С‚СѓСЃ РїРѕРјРѕС‰Рё" />
+        <ScreenHeader title={`${text.hello}, ${profile?.name ?? 'Aliya'}`} subtitle={text.helpStatus} />
         <section className="status-card">
           <div>
-            <p className="eyebrow">Р“РѕС‚РѕРІРЅРѕСЃС‚СЊ</p>
-            <h2>Р“РѕС‚РѕРІР° РїРѕРјРѕРіР°С‚СЊ</h2>
-            <p>Р’С‹ Р±СѓРґРµС‚Рµ РїРѕР»СѓС‡Р°С‚СЊ Р·Р°РїСЂРѕСЃС‹, РєРѕРіРґР° РєРѕРјСѓ-С‚Рѕ РїРѕРЅР°РґРѕР±РёС‚СЃСЏ РїРѕРјРѕС‰СЊ.</p>
+            <p className="eyebrow">{text.readiness}</p>
+            <h2>{text.readyToHelp}</h2>
+            <p>{text.readyDescription}</p>
           </div>
           <span>ON</span>
         </section>
         <div className="stats">
-          <b><span>{helped}</span>РїРѕРјРѕС‰Рё</b>
-          <b><span>{volunteerStats?.rating ?? demoStats?.rating ?? 4.9}</span>РѕС†РµРЅРєР°</b>
+          <b><span>{helped}</span>{text.helpedCount}</b>
+          <b><span>{volunteerStats?.rating ?? demoStats?.rating ?? 4.9}</span>{text.score}</b>
           <b><span>{xp}</span>XP</b>
         </div>
         <section className="level-card">
           <p>LEVEL {String(level).padStart(2, '0')}</p>
-          <h2>{volunteerStats?.title ?? demoStats?.title ?? 'РќР°РґРµР¶РЅС‹Р№ РїРѕРјРѕС‰РЅРёРє'}</h2>
+          <h2>{volunteerStats?.title ?? demoStats?.title ?? text.reliableHelper}</h2>
           <div className="progress"><span style={{ width: `${Math.min(100, (xp % 1000) / 10)}%` }} /></div>
           <small>{xp} / 1000 XP</small>
         </section>
@@ -634,7 +633,7 @@ export function HomePage() {
   if (step === 'incoming') {
     return (
       <PhoneShell screenKey={step} language={language}>
-        <ScreenHeader title="РќРѕРІС‹Р№ Р·Р°РїСЂРѕСЃ" subtitle="РџРѕР»СЊР·РѕРІР°С‚РµР»СЋ РЅСѓР¶РЅР° РїРѕРјРѕС‰СЊ РІ С‡Р°С‚Рµ." />
+        <ScreenHeader title={text.incomingTitle} subtitle={text.incomingSubtitle} />
         <ActionButton onClick={acceptIncomingRequest}>{text.accept}</ActionButton>
         <ActionButton tone="ghost" onClick={() => setStep('volunteerHome')}>{text.notNow}</ActionButton>
       </PhoneShell>
@@ -701,28 +700,28 @@ function HistoryScreen({
   onChat: () => void;
   onBack: () => void;
 }) {
-  const sessionDate = session ? new Date(session.startedAt).toLocaleDateString('ru-RU') : 'РЎРµРіРѕРґРЅСЏ';
+  const sessionDate = session ? new Date(session.startedAt).toLocaleDateString(language === 'en' ? 'en-US' : 'ru-RU') : uiText[language].history;
   return (
-    <PhoneShell screenKey="history">
-      <ScreenHeader title="РњРѕРё РїРѕРјРѕС‰Рё" subtitle="РўРµРєСѓС‰РёРµ Рё Р·Р°РІРµСЂС€РµРЅРЅС‹Рµ РѕР±СЂР°С‰РµРЅРёСЏ." />
+    <PhoneShell screenKey="history" language={language}>
+      <ScreenHeader title={uiText[language].history} subtitle={uiText[language].intro} />
       <div className="history-list">
         {session && volunteer ? (
           <button className="history-item" onClick={onChat}>
-            <span>{session.status === 'completed' ? 'Р—Р°РІРµСЂС€РµРЅРѕ' : 'РЎРµР№С‡Р°СЃ'}</span>
-            <strong>{volunteer.name} Рљ.</strong>
-            <p>{sessionDate} В· {messages.length} СЃРѕРѕР±С‰РµРЅРёР№</p>
+            <span>{session.status === 'completed' ? uiText[language].done : uiText[language].history}</span>
+            <strong>{volunteer.name} K.</strong>
+            <p>{sessionDate} · {messages.length}</p>
           </button>
         ) : (
           <div className="history-item">
-            <span>РџРѕРєР° РїСѓСЃС‚Рѕ</span>
-            <strong>Р—РґРµСЃСЊ РїРѕСЏРІСЏС‚СЃСЏ РІР°С€Рё РѕР±СЂР°С‰РµРЅРёСЏ</strong>
-            <p>РџРѕСЃР»Рµ РїРѕРёСЃРєР° РїРѕРјРѕС‰РЅРёРєР° С‡Р°С‚ РјРѕР¶РЅРѕ Р±СѓРґРµС‚ РѕС‚РєСЂС‹С‚СЊ СЃРЅРѕРІР°.</p>
+            <span>{uiText[language].history}</span>
+            <strong>{uiText[language].intro}</strong>
+            <p>{uiText[language].searchTitle}</p>
           </div>
         )}
         <div className="history-item">
-          <span>РџСЂРёРјРµСЂ</span>
-          <strong>РџРѕРјРѕС‰СЊ СЃ С‚РµР»РµС„РѕРЅРѕРј</strong>
-          <p>РќРµРґР°РІРЅРёР№ С‡Р°С‚ В· Р·Р°РІРµСЂС€РµРЅРѕ</p>
+          <span>{uiText[language].help}</span>
+          <strong>{uiText[language].chooseHelp}</strong>
+          <p>{uiText[language].done}</p>
         </div>
       </div>
       <ActionButton onClick={onBack}>{uiText[language].back}</ActionButton>
@@ -748,19 +747,19 @@ function ReportScreen({
   onBack: () => void;
 }) {
   const reasons: Array<{ id: ReportReason; label: string }> = [
-    { id: 'trolling', label: 'РћСЃРєРѕСЂР±Р»РµРЅРёСЏ РёР»Рё С‚СЂРѕР»Р»РёРЅРі' },
-    { id: 'money', label: 'РџСЂРѕСЃРёС‚ РґРµРЅСЊРіРё' },
-    { id: 'password', label: 'РџСЂРѕСЃРёС‚ РїР°СЂРѕР»СЊ РёР»Рё SMS-РєРѕРґ' },
-    { id: 'bank_data', label: 'РџСЂРѕСЃРёС‚ Р±Р°РЅРєРѕРІСЃРєРёРµ РґР°РЅРЅС‹Рµ' },
-    { id: 'suspicious_app', label: 'РџСЂРѕСЃРёС‚ СѓСЃС‚Р°РЅРѕРІРёС‚СЊ РїРѕРґРѕР·СЂРёС‚РµР»СЊРЅРѕРµ РїСЂРёР»РѕР¶РµРЅРёРµ' },
-    { id: 'suspicious_content', label: 'РћС‚РїСЂР°РІР»СЏРµС‚ РїРѕРґРѕР·СЂРёС‚РµР»СЊРЅС‹Р№ РєРѕРЅС‚РµРЅС‚' },
-    { id: 'bad_behavior', label: 'РќРµРїСЂРёРµРјР»РµРјРѕРµ РїРѕРІРµРґРµРЅРёРµ' },
-    { id: 'other', label: 'Р”СЂСѓРіРѕРµ' },
+    { id: 'trolling', label: uiText[language].complaint },
+    { id: 'money', label: uiText[language].suspicious },
+    { id: 'password', label: uiText[language].safetyNote },
+    { id: 'bank_data', label: uiText[language].safetyNote },
+    { id: 'suspicious_app', label: uiText[language].suspicious },
+    { id: 'suspicious_content', label: uiText[language].suspicious },
+    { id: 'bad_behavior', label: uiText[language].beCareful },
+    { id: 'other', label: uiText[language].complaint },
   ];
 
   return (
-    <PhoneShell screenKey="report">
-      <ScreenHeader title="РџРѕР¶Р°Р»РѕРІР°С‚СЊСЃСЏ" subtitle="Р’С‹Р±РµСЂРёС‚Рµ РїСЂРёС‡РёРЅСѓ Рё РґРѕР±Р°РІСЊС‚Рµ РєРѕСЂРѕС‚РєРёР№ РєРѕРјРјРµРЅС‚Р°СЂРёР№." />
+    <PhoneShell screenKey="report" language={language}>
+      <ScreenHeader title={uiText[language].complaint} subtitle={uiText[language].safetyNote} />
       <div className="report-options">
         {reasons.map((item) => (
           <button key={item.id} className={item.id === reason ? 'active' : ''} onClick={() => onReasonChange(item.id)}>
@@ -768,7 +767,7 @@ function ReportScreen({
           </button>
         ))}
       </div>
-      <textarea className="report-comment" value={comment} onChange={(event) => onCommentChange(event.target.value)} placeholder="РљРѕСЂРѕС‚РєРёР№ РєРѕРјРјРµРЅС‚Р°СЂРёР№..." />
+      <textarea className="report-comment" value={comment} onChange={(event) => onCommentChange(event.target.value)} placeholder={uiText[language].messagePlaceholder} />
       <ActionButton onClick={onSubmit}>{uiText[language].submitReport}</ActionButton>
       <ActionButton tone="ghost" onClick={onBack}>{uiText[language].back}</ActionButton>
     </PhoneShell>
@@ -805,16 +804,16 @@ function InfoScreen({
   onSignOut: () => void;
   onBack: () => void;
 }) {
-  const title = step === 'admin' ? 'РџСЂРѕС„РёР»СЊ' : step === 'volunteerProfile' ? 'РџСЂРѕРіСЂРµСЃСЃ' : 'Р‘РµР·РѕРїР°СЃРЅРѕСЃС‚СЊ';
+  const title = step === 'admin' ? uiText[language].profile : step === 'volunteerProfile' ? uiText[language].progress : uiText[language].settings;
   const reports = getSafetyReports();
   return (
     <PhoneShell screenKey={step} language={language}>
-      <ScreenHeader title={title} subtitle={profile ? `${profile.name} В· ${profile.city ?? 'РіРѕСЂРѕРґ РЅРµ СѓРєР°Р·Р°РЅ'}` : undefined} />
+      <ScreenHeader title={title} subtitle={profile ? `${profile.name} · ${profile.city ?? ''}` : undefined} />
       <div className="info-list">
-        {step === 'safety' ? <p>РќРёРєРѕРјСѓ РЅРµ СЃРѕРѕР±С‰Р°Р№С‚Рµ РїР°СЂРѕР»СЊ, SMS-РєРѕРґ, PIN РёР»Рё Р±Р°РЅРєРѕРІСЃРєРёРµ РґР°РЅРЅС‹Рµ.</p> : null}
-        {step === 'safety' ? <p>Р•СЃР»Рё СЂР°Р·РіРѕРІРѕСЂ РІС‹Р·С‹РІР°РµС‚ СЃРѕРјРЅРµРЅРёСЏ, Р·Р°РІРµСЂС€РёС‚Рµ РїРѕРјРѕС‰СЊ Рё РѕС‚РїСЂР°РІСЊС‚Рµ Р¶Р°Р»РѕР±Сѓ.</p> : null}
-        {step === 'admin' ? <p>Р РѕР»СЊ СЃРѕС…СЂР°РЅРµРЅР° РІ Supabase: {profile?.role === 'elder' ? 'РїРѕР»СѓС‡Р°СЋ РїРѕРјРѕС‰СЊ' : 'РїРѕРјРѕРіР°СЋ'}.</p> : null}
-        {step === 'admin' ? <p>РњРѕРґРµСЂР°С†РёСЏ: {reports.length} Р¶Р°Р»РѕР± РІ РѕС‡РµСЂРµРґРё, {reports.filter((item) => item.severity === 'high').length} РІС‹СЃРѕРєРѕРіРѕ СЂРёСЃРєР°.</p> : null}
+        {step === 'safety' ? <p>{uiText[language].safetyNote}</p> : null}
+        {step === 'admin' ? <p>{uiText[language].profile}: {profile?.role === 'elder' ? uiText[language].needHelp : uiText[language].wantHelp}</p> : null}
+        {step === 'admin' ? <p>{uiText[language].complaint}: {reports.length}</p> : null}
+
         {step === 'safety' ? (
           <div className="settings-group">
             <strong>{uiText[language].theme}</strong>
@@ -854,7 +853,7 @@ function InfoScreen({
             </div>
           </div>
         ) : null}
-        {step === 'volunteerProfile' && stats ? <p>{stats.rating} СЂРµР№С‚РёРЅРі В· {stats.xp} XP В· {stats.people_helped} РїРѕРјРѕС‰Рё В· {stats.thanks_received} Р±Р»Р°РіРѕРґР°СЂРЅРѕСЃС‚РµР№</p> : null}
+        {step === 'volunteerProfile' && stats ? <p>{stats.rating} {uiText[language].rating} · {stats.xp} XP · {stats.people_helped} {uiText[language].helpedCount}</p> : null}
         {step === 'volunteerProfile' ? achievements.map((item) => <p key={item.id}><b>{item.name}</b><br />{item.description}</p>) : null}
       </div>
       <ActionButton onClick={onBack}>{uiText[language].back}</ActionButton>

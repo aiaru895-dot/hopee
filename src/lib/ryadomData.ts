@@ -1,4 +1,4 @@
-import type { Achievement, HelpCategory, User, Volunteer } from './ryadomTypes';
+﻿import type { Achievement, HelpCategory, User, Volunteer } from './ryadomTypes';
 
 export const helpCategories: Array<{ id: HelpCategory; label: string; icon: string }> = [
   { id: 'phone', label: 'Телефон', icon: '' },
