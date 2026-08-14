@@ -11,7 +11,7 @@ type ActionButtonProps = {
 export function PhoneShell({ children, screenKey = 'static', language = 'ru' }: { children: ReactNode; screenKey?: string; language?: Language }) {
   return (
     <main className="app-shell">
-      <section className="phone-shell">
+      <section className={`phone-shell phone-shell--${screenKey}`}>
         <div key={screenKey} className="screen-transition">
           {children}
         </div>

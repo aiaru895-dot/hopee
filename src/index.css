@@ -51,6 +51,7 @@ button, input { font: inherit; }
 .phone-shell {
   width: 100%;
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--panel);
   border: 0;
   border-radius: 0;
@@ -63,6 +64,8 @@ button, input { font: inherit; }
   overflow: hidden;
 }
 .screen-transition {
+  width: min(100%, 1120px);
+  margin: 0 auto;
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -792,6 +795,8 @@ input {
 }
 
 .ad-slot {
+  width: min(100%, 1120px);
+  margin: auto auto 0;
   min-height: 58px;
   border: 1px dashed var(--accent-line);
   border-radius: 12px;
@@ -801,7 +806,6 @@ input {
   color: var(--muted);
   font-size: 13px;
   font-weight: 700;
-  margin-top: auto;
 }
 .ad-slot span {
   opacity: 0.76;
@@ -989,7 +993,7 @@ input {
 
 @media (max-width: 420px) {
   .app-shell { padding: 0; }
-  .phone-shell { min-height: 100vh; border-radius: 0; border: 0; padding: 20px; }
+  .phone-shell { min-height: 100vh; min-height: 100dvh; border-radius: 0; border: 0; padding: 20px; }
   .screen-header h1, .home-panel h1, .center-screen h1 { font-size: 30px; }
   .role-hero { min-height: 220px; }
   .role-hero__art { width: min(100%, 340px); }
@@ -997,6 +1001,28 @@ input {
   .name-grid { grid-template-columns: 1fr; }
   .chat-input { grid-template-columns: 1fr; }
   .chat-input button { min-height: 54px; }
+}
+
+@media (min-width: 640px) and (max-width: 859px) {
+  .phone-shell {
+    padding: 30px;
+  }
+  .screen-transition {
+    width: min(100%, 680px);
+  }
+  .role-hero {
+    min-height: 300px;
+  }
+  .role-hero__art {
+    width: min(100%, 440px);
+  }
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .safety-actions,
+  .report-options {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (min-width: 860px) {
@@ -1007,33 +1033,112 @@ input {
     width: 100%;
     min-height: 100vh;
     border-radius: 0;
-    padding: 42px max(42px, calc((100vw - 980px) / 2));
+    padding: 42px max(42px, calc((100vw - 1180px) / 2));
   }
   .login-hero p {
     max-width: 520px;
   }
   .screen-transition {
-    width: min(100%, 980px);
-    margin: 0 auto;
+    width: min(100%, 1120px);
+  }
+  .phone-shell--role .screen-transition {
+    min-height: calc(100vh - 168px);
+    display: grid;
+    grid-template-columns: minmax(360px, 1.15fr) minmax(320px, 0.85fr);
+    grid-template-areas:
+      "header actions"
+      "hero actions"
+      "hero exit";
+    align-items: center;
+    column-gap: clamp(34px, 6vw, 96px);
+  }
+  .phone-shell--role .screen-header {
+    grid-area: header;
+    align-self: end;
+  }
+  .phone-shell--role .role-hero {
+    grid-area: hero;
+    align-self: start;
+  }
+  .phone-shell--role .stack {
+    grid-area: actions;
+    align-self: center;
+    margin-top: 0;
+  }
+  .phone-shell--role .action-button--ghost {
+    grid-area: exit;
+    align-self: start;
   }
   .role-hero {
-    min-height: 320px;
+    min-height: 390px;
   }
   .role-hero__art {
-    width: 480px;
-    max-height: 310px;
+    width: min(48vw, 560px);
+    max-height: 380px;
   }
-  .home-panel {
-    max-width: 620px;
+  .phone-shell--elderHome .screen-transition,
+  .phone-shell--volunteerHome .screen-transition {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 0.85fr);
+    align-content: start;
+    gap: 18px;
+  }
+  .phone-shell--elderHome .top-bar,
+  .phone-shell--volunteerHome .top-bar,
+  .phone-shell--volunteerHome .screen-header,
+  .phone-shell--volunteerHome .bottom-nav,
+  .phone-shell--elderHome .bottom-nav {
+    grid-column: 1 / -1;
+  }
+  .phone-shell--elderHome .home-panel,
+  .phone-shell--elderHome .trust-note {
+    min-height: 260px;
+  }
+  .phone-shell--volunteerHome .stats,
+  .phone-shell--volunteerHome .level-card,
+  .phone-shell--volunteerHome .leaderboard {
+    align-self: start;
+  }
+  .phone-shell--category .grid {
+    grid-template-columns: repeat(4, 1fr);
   }
   .grid {
     grid-template-columns: repeat(4, 1fr);
   }
+  .phone-shell--chat .screen-transition {
+    min-height: calc(100vh - 168px);
+  }
   .chat-list {
-    min-height: 360px;
+    min-height: 0;
+    max-height: none;
   }
   .bottom-nav,
   .safety-actions {
     grid-template-columns: repeat(3, 1fr);
+  }
+  .report-options {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1200px) {
+  .screen-header h1,
+  .home-panel h1,
+  .center-screen h1 {
+    font-size: 42px;
+  }
+  .screen-header p,
+  .center-screen p,
+  .volunteer-card p,
+  .info-list p,
+  .home-panel p,
+  .trust-note p,
+  .status-card p {
+    font-size: 19px;
+  }
+  .action-button,
+  .tile-button,
+  .submit-button {
+    min-height: 70px;
   }
 }
