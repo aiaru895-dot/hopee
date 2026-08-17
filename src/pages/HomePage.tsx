@@ -861,7 +861,7 @@ export function HomePage() {
         {voiceError ? <div className="warning">{voiceError}</div> : null}
         <div className="chat-input">
           <input disabled={blockedChat} value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={text.messagePlaceholder} />
-          <button className="voice-round-button" disabled={blockedChat} onClick={toggleVoiceRecording}>{isRecordingVoice ? 'Стоп' : 'Голос'}</button>
+          <button className="voice-round-button" data-recording={isRecordingVoice ? 'true' : 'false'} disabled={blockedChat} onClick={toggleVoiceRecording}>{isRecordingVoice ? 'Стоп' : 'Голос'}</button>
           <button disabled={blockedChat} onClick={sendText}>{text.send}</button>
         </div>
         {!isAiChat ? <div className="chat-tools">
