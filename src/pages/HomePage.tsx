@@ -38,6 +38,7 @@ type Step =
   | 'report'
   | 'unsafe'
   | 'blocked'
+  | 'safetyGuide'
   | 'history'
   | 'rating'
   | 'safety'
@@ -50,6 +51,29 @@ type ThemeMode = 'light' | 'dark';
 type FontMode = 'normal' | 'large';
 type BrowserAudioWindow = Window & typeof globalThis & {
   webkitAudioContext?: typeof AudioContext;
+};
+type SpeechRecognitionResultLike = {
+  readonly 0: { transcript: string };
+};
+type SpeechRecognitionEventLike = Event & {
+  results: {
+    readonly length: number;
+    readonly [index: number]: SpeechRecognitionResultLike;
+  };
+};
+type SpeechRecognitionLike = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+type SpeechWindow = Window & typeof globalThis & {
+  SpeechRecognition?: new () => SpeechRecognitionLike;
+  webkitSpeechRecognition?: new () => SpeechRecognitionLike;
 };
 
 const friendsLeaderboard = [
@@ -135,6 +159,8 @@ export function HomePage() {
   const [reportComment, setReportComment] = useState('');
   const [blockedChat, setBlockedChat] = useState(false);
   const [voicePrompt, setVoicePrompt] = useState(false);
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [voiceError, setVoiceError] = useState('');
   const [aiSafety, setAiSafety] = useState<AiSafetyResult | null>(null);
   const [isCheckingSafety, setIsCheckingSafety] = useState(false);
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => (localStorage.getItem('hopee-theme') === 'dark' ? 'dark' : 'light'));
@@ -148,9 +174,14 @@ export function HomePage() {
   const searchSoundRef = useRef<{ context: AudioContext; timer: number } | null>(null);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const videoInputRef = useRef<HTMLInputElement | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const voiceChunksRef = useRef<Blob[]>([]);
+  const speechRecognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const voiceTranscriptRef = useRef('');
   const visibleAchievements = useMemo(() => achievements.slice(0, 3), []);
   const text = uiText[language];
   const profileName = cleanDisplayName(profile?.name, profile?.role ?? role);
+  const myChatId = profile?.id ?? (role === 'elder' ? elders[0].id : 'guest-volunteer');
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -191,6 +222,7 @@ export function HomePage() {
   useEffect(() => () => {
     window.clearTimeout(searchTimerRef.current);
     stopSearchSound();
+    stopVoiceTracks();
   }, []);
 
   useEffect(() => {
@@ -285,10 +317,34 @@ export function HomePage() {
     setBlockedChat(false);
     setAiSafety(null);
     setMessages([
-      createMessage(nextSession.id, aiVolunteer.id, 'system', 'Свободных помощников сейчас нет. KÖMEK поможет с простыми шагами и подскажет, когда нужен человек.'),
-      createMessage(nextSession.id, aiVolunteer.id, 'text', 'Опишите, что не получается. Я отвечу спокойно и без просьб о паролях или кодах.'),
+      createMessage(nextSession.id, aiVolunteer.id, 'system', 'Вы выбрали голосового помощника KÖMEK. Он поможет с простыми шагами и подскажет, когда нужен человек.'),
+      createMessage(nextSession.id, aiVolunteer.id, 'text', 'Нажмите «Голос», скажите вопрос, и ваши слова появятся в чате. Я отвечу спокойно и без просьб о паролях или кодах.'),
     ]);
     setStep('chat');
+  };
+
+  const speakAiAnswer = (answer: string) => {
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(answer);
+    utterance.lang = language === 'kk' ? 'kk-KZ' : language === 'en' ? 'en-US' : 'ru-RU';
+    utterance.rate = 0.92;
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const answerWithAi = async (conversation: ChatMessage[], userText: string) => {
+    if (!helpSession || volunteer?.id !== aiVolunteer.id || !userText.trim()) return;
+    const { data, error } = await supabase.functions.invoke<{ text?: string }>('ai', {
+      body: {
+        prompt: userText,
+        system: 'Ты голосовой помощник KÖMEK для пожилых людей. Отвечай коротко, спокойно, пошагово. Не проси пароли, SMS-коды, PIN, данные карт. Если вопрос опасный или сложный, предложи позвать живого волонтера.',
+      },
+    });
+    const answer = error || !data?.text
+      ? 'Я рядом. Давайте попробуем по шагам. Опишите, что видно на экране, и я подскажу дальше.'
+      : data.text;
+    setMessages([...conversation, createMessage(helpSession.id, aiVolunteer.id, 'text', answer)]);
+    speakAiAnswer(answer);
   };
 
   const startSearchSound = () => {
@@ -359,7 +415,8 @@ export function HomePage() {
 
   const sendText = async () => {
     if (!helpSession || !draft.trim() || blockedChat) return;
-    const nextMessage = createMessage(helpSession.id, profile?.id ?? elders[0].id, 'text', draft.trim());
+    const userText = draft.trim();
+    const nextMessage = createMessage(helpSession.id, myChatId, 'text', userText);
     const nextMessages = [...messages, nextMessage];
     setMessages(nextMessages);
     setDraft('');
@@ -373,20 +430,97 @@ export function HomePage() {
       blockUser(profile?.id ?? elders[0].id, volunteer.id);
       setBlockedChat(true);
       setHelpSession((current) => (current ? { ...current, status: 'reported', endedAt: new Date().toISOString() } : current));
+      return;
+    }
+    await answerWithAi(nextMessages, userText);
+  };
+
+  const startSpeechRecognition = () => {
+    const speechWindow = window as SpeechWindow;
+    const SpeechRecognitionClass = speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition;
+    if (!SpeechRecognitionClass) {
+      setVoiceError('Браузер запишет голосовое, но не сможет сам написать текст. Лучше открыть в Chrome.');
+      return;
+    }
+    const recognition = new SpeechRecognitionClass();
+    recognition.lang = language === 'kk' ? 'kk-KZ' : language === 'en' ? 'en-US' : 'ru-RU';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.onresult = (event) => {
+      const words: string[] = [];
+      for (let index = 0; index < event.results.length; index += 1) {
+        words.push(event.results[index][0].transcript);
+      }
+      const transcript = words.join(' ').trim();
+      voiceTranscriptRef.current = transcript;
+      setDraft(transcript);
+    };
+    recognition.onerror = () => setVoiceError('Не получилось распознать речь. Можно написать сообщение вручную.');
+    recognition.onend = () => {
+      if (speechRecognitionRef.current === recognition) speechRecognitionRef.current = null;
+    };
+    speechRecognitionRef.current = recognition;
+    recognition.start();
+  };
+
+  const toggleVoiceRecording = async () => {
+    if (!helpSession || blockedChat) return;
+    if (isRecordingVoice) {
+      speechRecognitionRef.current?.stop();
+      mediaRecorderRef.current?.stop();
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      setVoiceError('Голосовые сообщения не поддерживаются в этом браузере.');
+      return;
+    }
+
+    try {
+      setVoiceError('');
+      setVoicePrompt(true);
+      voiceChunksRef.current = [];
+      voiceTranscriptRef.current = '';
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) voiceChunksRef.current = [...voiceChunksRef.current, event.data];
+      };
+      recorder.onstop = () => {
+        const blob = new Blob(voiceChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+        const url = URL.createObjectURL(blob);
+        const spokenText = voiceTranscriptRef.current.trim();
+        const messageText = spokenText || 'Голосовое сообщение';
+        setMessages((items) => {
+          const nextMessages = [
+            ...items,
+            createMessage(helpSession.id, myChatId, 'voice', messageText, { url, name: 'voice-message.webm' }),
+          ];
+          void answerWithAi(nextMessages, spokenText);
+          return nextMessages;
+        });
+        if (spokenText) setDraft('');
+        setIsRecordingVoice(false);
+        setVoicePrompt(false);
+        stopVoiceTracks();
+      };
+      recorder.start();
+      startSpeechRecognition();
+      setIsRecordingVoice(true);
+    } catch {
+      setVoiceError('Не получилось включить микрофон. Проверьте разрешение в браузере.');
+      setVoicePrompt(false);
+      setIsRecordingVoice(false);
+      stopVoiceTracks();
     }
   };
 
-  const sendQuickMedia = (type: ChatMessage['messageType']) => {
-    if (!helpSession || blockedChat) return;
-    if (type === 'voice') setVoicePrompt(true);
-    const textByType = {
-      text: '',
-      system: '',
-      voice: uiText[language].voice,
-      photo: uiText[language].photo,
-      video: uiText[language].video,
-    };
-    setMessages((items) => [...items, createMessage(helpSession.id, profile?.id ?? elders[0].id, type, textByType[type])]);
+  const stopVoiceTracks = () => {
+    speechRecognitionRef.current?.stop();
+    speechRecognitionRef.current = null;
+    mediaRecorderRef.current?.stream.getTracks().forEach((track) => track.stop());
+    mediaRecorderRef.current = null;
   };
 
   const sendSelectedFile = (type: 'photo' | 'video', file?: File) => {
@@ -514,6 +648,7 @@ export function HomePage() {
           <h1>Добрый день, {profileName}.</h1>
           <p>Чем мы можем вам помочь?</p>
           <ActionButton onClick={() => setStep('category')}>Мне нужна помощь</ActionButton>
+          <ActionButton tone="ghost" onClick={startAiHelp}>Голосовой помощник KÖMEK</ActionButton>
           <p className="help-undertext">Мы найдём человека, который вам поможет.</p>
         </section>
         <section className="trust-note calm-panel">
@@ -523,6 +658,7 @@ export function HomePage() {
         <div className="secondary-actions">
           <button onClick={() => setStep('history')}>{text.history}</button>
           <button onClick={() => setStep('safety')}>{text.settings}</button>
+          <button onClick={() => setStep('safetyGuide')}>Правила безопасности</button>
         </div>
       </PhoneShell>
     );
@@ -542,6 +678,7 @@ export function HomePage() {
         <section className="choice-help">
           <p>Не знаете, что выбрать?</p>
           <button onClick={() => startSearch('any')}>Помогите мне</button>
+          <button onClick={startAiHelp}>Спросить голосового помощника</button>
         </section>
         <ActionButton tone="ghost" onClick={() => setStep('elderHome')}>{text.back}</ActionButton>
       </PhoneShell>
@@ -604,7 +741,7 @@ export function HomePage() {
           </div>
           <button onClick={() => setStep('history')}>{text.history}</button>
         </header>
-        <div className="safety-note">Никому не сообщайте: пароль, код из SMS, PIN-код и данные банковской карты.</div>
+        <button className="safety-note safety-note-button" onClick={() => setStep('safetyGuide')}>Никому не сообщайте пароль, код из SMS, PIN-код и данные банковской карты. Читать правила</button>
         {isCheckingSafety ? <div className="ai-safety ai-safety--checking">{text.aiChecking}</div> : null}
         {aiSafety && aiSafety.risk !== 'safe' ? (
           <div className={`ai-safety ai-safety--${aiSafety.risk}`}>
@@ -625,14 +762,16 @@ export function HomePage() {
             <div key={item.id} className={item.senderId === profile?.id ? 'message message--mine' : 'message'}>
               {item.messageType === 'photo' && item.fileUrl ? <img className="message-media" src={item.fileUrl} alt={item.fileName ?? text.photo} /> : null}
               {item.messageType === 'video' && item.fileUrl ? <video className="message-media" src={item.fileUrl} controls /> : null}
+              {item.messageType === 'voice' && item.fileUrl ? <audio className="voice-message" src={item.fileUrl} controls /> : null}
               <p>{item.text}</p>
             </div>
           ))}
         </div>
         {voicePrompt ? <div className="voice-status">Говорите. Мы вас слушаем.</div> : null}
-        <button className="voice-main-button" disabled={blockedChat} onClick={() => sendQuickMedia('voice')}>Говорить</button>
+        {voiceError ? <div className="warning">{voiceError}</div> : null}
         <div className="chat-input">
           <input disabled={blockedChat} value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={text.messagePlaceholder} />
+          <button className="voice-round-button" disabled={blockedChat} onClick={toggleVoiceRecording}>{isRecordingVoice ? 'Стоп' : 'Голос'}</button>
           <button disabled={blockedChat} onClick={sendText}>{text.send}</button>
         </div>
         <div className="chat-tools">
@@ -671,6 +810,33 @@ export function HomePage() {
           <button onClick={blockCurrentVolunteer}>{text.block}</button>
         </details>
         <ActionButton tone="danger" onClick={completeHelp}>{text.finishHelp}</ActionButton>
+      </PhoneShell>
+    );
+  }
+
+  if (step === 'safetyGuide') {
+    return (
+      <PhoneShell screenKey={step} language={language}>
+        <ScreenHeader title="Правила безопасности" subtitle="Как безопасно пользоваться интернетом и KÖMEK." />
+        <section className="safety-guide">
+          <article>
+            <h2>Никому не сообщайте</h2>
+            <p>Пароль, код из SMS, PIN-код, данные банковской карты и коды из банковского приложения.</p>
+          </article>
+          <article>
+            <h2>Помощник не должен просить деньги</h2>
+            <p>Если вас просят перевести деньги или открыть банк, остановите общение.</p>
+          </article>
+          <article>
+            <h2>Если стало тревожно</h2>
+            <p>Нажмите “Мне небезопасно”. Мы остановим чат, заблокируем человека и отправим жалобу на проверку.</p>
+          </article>
+          <article>
+            <h2>В KÖMEK</h2>
+            <p>Общайтесь только в чате приложения. Не переходите по подозрительным ссылкам и не устанавливайте неизвестные приложения.</p>
+          </article>
+        </section>
+        <ActionButton onClick={() => setStep(volunteer ? 'chat' : role === 'elder' ? 'elderHome' : 'volunteerHome')}>{text.back}</ActionButton>
       </PhoneShell>
     );
   }

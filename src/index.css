@@ -238,7 +238,7 @@ button, input { font: inherit; }
 }
 .secondary-actions {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 10px;
 }
 .secondary-actions button,
@@ -549,6 +549,11 @@ button, input { font: inherit; }
   font-size: 15px;
   line-height: 1.45;
 }
+.safety-note-button {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
 .ai-safety {
   border: 1px solid var(--accent-line);
   border-radius: 12px;
@@ -582,8 +587,10 @@ button, input { font: inherit; }
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding-bottom: 12px;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
 }
 .back-button {
   flex: 0 0 auto;
@@ -603,21 +610,31 @@ button, input { font: inherit; }
   min-height: 260px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 18px;
+  background-color: #fbf6ef;
+  background-image:
+    radial-gradient(circle at 16px 16px, rgba(184, 92, 120, 0.07) 0 2px, transparent 3px),
+    radial-gradient(circle at 58px 42px, rgba(79, 127, 103, 0.07) 0 2px, transparent 3px);
+  background-size: 76px 76px;
 }
 .message {
-  max-width: 88%;
+  max-width: min(82%, 620px);
+  width: fit-content;
   background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 16px 16px 16px 6px;
-  padding: 12px 14px;
+  border: 1px solid rgba(39, 35, 38, 0.08);
+  border-radius: 12px 12px 12px 4px;
+  padding: 10px 12px;
+  box-shadow: 0 4px 12px rgba(39, 35, 38, 0.06);
 }
 .message--mine {
   margin-left: auto;
-  background: var(--accent-soft);
-  border-color: var(--accent-line);
-  border-radius: 16px 16px 6px 16px;
+  background: #d8f7cf;
+  border-color: #b9e8ad;
+  border-radius: 12px 12px 4px 12px;
 }
 .message-media {
   width: min(100%, 260px);
@@ -629,6 +646,10 @@ button, input { font: inherit; }
   background: #f3eeee;
 }
 .message p { margin: 0; font-size: 18px; line-height: 1.42; }
+.voice-message {
+  width: min(280px, 70vw);
+  display: block;
+}
 .history-list {
   display: grid;
   gap: 10px;
@@ -667,16 +688,6 @@ button, input { font: inherit; }
   color: var(--muted);
   font-weight: 760;
 }
-.voice-main-button {
-  min-height: 68px;
-  border: 0;
-  border-radius: 14px;
-  background: var(--safe);
-  color: #fff;
-  font-size: 22px;
-  font-weight: 800;
-  cursor: pointer;
-}
 .voice-status {
   border: 1px solid var(--accent-line);
   border-radius: 12px;
@@ -687,14 +698,33 @@ button, input { font: inherit; }
   font-weight: 800;
 }
 .file-input { display: none; }
-.chat-input { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.chat-input {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px;
+  background: var(--card);
+  box-shadow: 0 8px 20px rgba(39, 35, 38, 0.08);
+}
+.chat-input input {
+  border: 0;
+  min-height: 48px;
+  background: transparent;
+}
 .chat-input button {
   border: 0;
-  border-radius: 12px;
+  border-radius: 999px;
   background: var(--primary);
   color: #fff;
-  padding: 0 14px;
+  min-height: 48px;
+  padding: 0 18px;
   font-weight: 760;
+}
+.chat-input .voice-round-button {
+  background: var(--safe);
 }
 .chat-input button:disabled,
 .chat-tools button:disabled {
@@ -747,6 +777,28 @@ button, input { font: inherit; }
 .more-safety-actions button {
   width: 100%;
   margin-top: 8px;
+}
+.safety-guide {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.safety-guide article {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 18px;
+  background: var(--card);
+  box-shadow: 0 10px 28px rgba(39, 35, 38, 0.05);
+}
+.safety-guide h2 {
+  margin: 0 0 8px;
+  font-size: 24px;
+}
+.safety-guide p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 19px;
+  line-height: 1.45;
 }
 .safety-actions button:nth-child(2),
 .report-options button.active {
@@ -1139,6 +1191,10 @@ input {
   .name-grid { grid-template-columns: 1fr; }
   .chat-input { grid-template-columns: 1fr; }
   .chat-input button { min-height: 54px; }
+  .secondary-actions,
+  .safety-guide {
+    grid-template-columns: 1fr;
+  }
   .auth-layout,
   .auth-card {
     width: calc(100vw - 40px);
@@ -1378,7 +1434,6 @@ input {
   .phone-shell--chat .warning,
   .phone-shell--chat .chat-list,
   .phone-shell--chat .voice-status,
-  .phone-shell--chat .voice-main-button,
   .phone-shell--chat .chat-input,
   .phone-shell--chat .chat-tools {
     grid-column: 1;
