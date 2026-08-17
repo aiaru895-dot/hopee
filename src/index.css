@@ -207,6 +207,25 @@ button, input { font: inherit; }
   gap: 12px;
   margin-top: 10px;
 }
+.welcome-points {
+  width: min(100%, 620px);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.welcome-points span {
+  min-height: 74px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+  color: var(--ink);
+  padding: 14px;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.28;
+}
 .praise-banner {
   border: 1px solid #b9e8ad;
   border-radius: 14px;
@@ -1332,6 +1351,12 @@ input {
   .name-grid { grid-template-columns: 1fr; }
   .chat-input { grid-template-columns: 1fr; }
   .chat-input button { min-height: 54px; }
+  .welcome-points {
+    grid-template-columns: 1fr;
+  }
+  .welcome-points span {
+    min-height: 58px;
+  }
   .secondary-actions,
   .safety-guide {
     grid-template-columns: 1fr;

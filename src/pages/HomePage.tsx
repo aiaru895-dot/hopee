@@ -139,6 +139,16 @@ const aiVolunteer: Volunteer = {
   },
 };
 
+const komekAiSystemPrompt = `
+Ты KÖMEK AI, голосовой помощник приложения KÖMEK.
+Твои рамки: поддержка пожилых людей и помощь с телефоном, интернетом, приложениями, сообщениями, настройками, безопасностью и связью с волонтёром.
+Не отвечай на темы вне KÖMEK и помощи пожилым: развлечения, споры, политика, учебные задания, программирование, личные советы не по поддержке, любые случайные вопросы.
+Если вопрос вне рамок, ответь коротко: "Я могу помочь только с поддержкой в KÖMEK: телефон, интернет, приложения, сообщения, безопасность или связь с волонтёром. Чем помочь?"
+Внутри рамок отвечай спокойно, коротко и пошагово.
+Никогда не проси пароли, SMS-коды, PIN или данные карт.
+Если проблема опасная, банковская или срочная, предложи позвать живого волонтёра или близкого человека.
+`;
+
 const elderChatPartner: Volunteer = {
   ...elders[0],
   status: 'online',
@@ -337,7 +347,7 @@ export function HomePage() {
     setAiSafety(null);
     setMessages([
       createMessage(nextSession.id, aiVolunteer.id, 'system', 'Вы выбрали голосового помощника KÖMEK. Он поможет с простыми шагами и подскажет, когда нужен человек.'),
-      createMessage(nextSession.id, aiVolunteer.id, 'text', 'Нажмите «Голос», скажите вопрос, и ваши слова появятся в чате. Я отвечу спокойно и без просьб о паролях или кодах.'),
+      createMessage(nextSession.id, aiVolunteer.id, 'text', 'Нажмите «Голос» или напишите вопрос про телефон, интернет, приложения, сообщения или безопасность. Я помогу в рамках KÖMEK.'),
     ]);
     setStep('chat');
   };
@@ -363,7 +373,7 @@ export function HomePage() {
       const { data, error } = await supabase.functions.invoke<AiFunctionResponse>('ai', {
         body: {
           prompt,
-          system: 'Ты KÖMEK AI, дружелюбный голосовой помощник для пожилых людей. Веди обычную переписку, отвечай по смыслу последнего сообщения, не повторяй один и тот же шаблон. Если спрашивают про устройство, давай конкретные шаги. Если пользователь просто здоровается или ругается, отвечай спокойно и по-человечески. Никогда не проси пароли, SMS-коды, PIN или данные карт.',
+          system: komekAiSystemPrompt,
         },
       });
       const answer = data?.text?.trim();
@@ -664,7 +674,12 @@ export function HomePage() {
           <img className="brand-symbol brand-symbol--hero" src="/app-icon.svg" alt="" aria-hidden="true" />
           <p className="eyebrow">KÖMEK</p>
           <h1>Помощь рядом</h1>
-          <p>Найдите волонтёра или поговорите с голосовым ИИ-помощником.</p>
+          <p>KÖMEK помогает пожилым людям быстро получить поддержку с телефоном, интернетом, приложениями и сообщениями.</p>
+          <div className="welcome-points">
+            <span>Пожилой человек просит помощь</span>
+            <span>Волонтёр отвечает в чате</span>
+            <span>ИИ помогает, когда нужен быстрый совет</span>
+          </div>
           <div className="welcome-actions">
             <ActionButton onClick={finishWelcome}>Начать</ActionButton>
             {!session ? <ActionButton tone="calm" onClick={enterAsGuest}>Попробовать как гость</ActionButton> : null}
