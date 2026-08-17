@@ -1122,6 +1122,98 @@ input {
   color: var(--ink);
 }
 
+:root[data-theme="dark"] .phone-shell {
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.32);
+}
+
+:root[data-theme="dark"] .chat-header,
+:root[data-theme="dark"] .chat-input,
+:root[data-theme="dark"] .chat-tools button,
+:root[data-theme="dark"] .more-safety-actions,
+:root[data-theme="dark"] .safety-guide article,
+:root[data-theme="dark"] .trust-note,
+:root[data-theme="dark"] .status-card,
+:root[data-theme="dark"] .level-card,
+:root[data-theme="dark"] .volunteer-card,
+:root[data-theme="dark"] .form-card,
+:root[data-theme="dark"] .info-list {
+  background: var(--card);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+:root[data-theme="dark"] .chat-list {
+  border-color: var(--line);
+  background-color: #211c1f;
+  background-image:
+    radial-gradient(circle at 16px 16px, rgba(210, 122, 149, 0.11) 0 2px, transparent 3px),
+    radial-gradient(circle at 58px 42px, rgba(158, 208, 180, 0.08) 0 2px, transparent 3px);
+}
+
+:root[data-theme="dark"] .message {
+  border-color: var(--line);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+}
+
+:root[data-theme="dark"] .message--mine,
+:root[data-theme="dark"] .praise-banner {
+  background: #24392e;
+  border-color: #3f6750;
+  color: #dff5e8;
+}
+
+:root[data-theme="dark"] .message-media,
+:root[data-theme="dark"] .voice-message {
+  background: #171315;
+}
+
+:root[data-theme="dark"] .safety-note,
+:root[data-theme="dark"] .ad-slot {
+  background: #2a2428;
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+:root[data-theme="dark"] .warning,
+:root[data-theme="dark"] .ai-safety--warning,
+:root[data-theme="dark"] .ai-safety--high,
+:root[data-theme="dark"] .safety-zone {
+  background: #3c2423;
+  border-color: #6f403c;
+  color: #ffd8d5;
+}
+
+:root[data-theme="dark"] .warning p {
+  color: #ffd8d5;
+}
+
+:root[data-theme="dark"] .warning button {
+  background: #ffaaa3;
+  color: #2b1716;
+}
+
+:root[data-theme="dark"] .ai-safety,
+:root[data-theme="dark"] .voice-status {
+  background: #21372b;
+  border-color: #3f6750;
+  color: #dff5e8;
+}
+
+:root[data-theme="dark"] .chat-input input {
+  background: transparent;
+  color: var(--ink);
+}
+
+:root[data-theme="dark"] .chat-input input::placeholder {
+  color: #8f8389;
+}
+
+:root[data-theme="dark"] .theme-toggle button.active,
+:root[data-theme="dark"] .language-toggle button.active {
+  background: var(--accent-soft);
+  color: var(--primary-dark);
+}
+
 :root[data-theme="dark"] .search-indicator {
   background:
     radial-gradient(circle, var(--panel) 0 38%, transparent 39%),
