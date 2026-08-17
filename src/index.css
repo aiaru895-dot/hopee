@@ -217,6 +217,58 @@ button, input { font: inherit; }
   gap: 18px;
   padding: 18px 0 8px;
 }
+.elder-home-panel {
+  align-content: center;
+  gap: 20px;
+}
+.elder-home-panel .action-button {
+  min-height: 78px;
+  font-size: 24px;
+  text-transform: uppercase;
+}
+.help-undertext {
+  margin: 0;
+  color: var(--muted);
+  font-size: 20px;
+  line-height: 1.45;
+}
+.calm-panel {
+  display: grid;
+  align-content: center;
+}
+.secondary-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.secondary-actions button,
+.choice-help button,
+.more-safety-actions button {
+  min-height: 56px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--ink);
+  padding: 0 14px;
+  font-weight: 760;
+  cursor: pointer;
+}
+.choice-help {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  background: var(--card);
+  display: grid;
+  gap: 12px;
+}
+.choice-help p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 18px;
+}
+.elder-help-grid .tile-button {
+  min-height: 78px;
+}
 .trust-note, .status-card, .level-card, .volunteer-card, .form-card, .info-list {
   border: 1px solid var(--line);
   border-radius: 16px;
@@ -533,6 +585,9 @@ button, input { font: inherit; }
   padding-bottom: 12px;
   border-bottom: 1px solid var(--line);
 }
+.back-button {
+  flex: 0 0 auto;
+}
 .chat-header h1 {
   margin: 0;
   font-size: 24px;
@@ -603,7 +658,7 @@ button, input { font: inherit; }
   color: var(--muted);
   font-size: 15px;
 }
-.chat-tools { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.chat-tools { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
 .chat-tools button {
   min-height: 50px;
   border: 1px solid var(--line);
@@ -611,6 +666,25 @@ button, input { font: inherit; }
   background: #fff;
   color: var(--muted);
   font-weight: 760;
+}
+.voice-main-button {
+  min-height: 68px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--safe);
+  color: #fff;
+  font-size: 22px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.voice-status {
+  border: 1px solid var(--accent-line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: var(--safe-bg);
+  color: var(--safe);
+  font-size: 18px;
+  font-weight: 800;
 }
 .file-input { display: none; }
 .chat-input { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
@@ -630,6 +704,16 @@ button, input { font: inherit; }
   display: grid;
   gap: 8px;
 }
+.safety-zone {
+  border: 1px solid #f0d0cc;
+  border-radius: 14px;
+  padding: 12px;
+  background: var(--danger-bg);
+}
+.safety-zone strong {
+  color: var(--danger);
+  font-size: 18px;
+}
 .safety-actions button,
 .report-options button {
   min-height: 50px;
@@ -640,6 +724,29 @@ button, input { font: inherit; }
   font-weight: 760;
   text-align: left;
   padding: 0 14px;
+}
+.safety-zone button {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: #fff;
+}
+.more-safety-actions {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--card);
+}
+.more-safety-actions summary {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  color: var(--muted);
+  font-weight: 800;
+  cursor: pointer;
+}
+.more-safety-actions button {
+  width: 100%;
+  margin-top: 8px;
 }
 .safety-actions button:nth-child(2),
 .report-options button.active {
@@ -1261,7 +1368,44 @@ input {
   }
   .phone-shell--chat .screen-transition {
     display: grid;
-    grid-template-rows: auto auto auto minmax(0, 1fr) auto auto auto;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 0.38fr);
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
+    gap: 12px 18px;
+  }
+  .phone-shell--chat .chat-header,
+  .phone-shell--chat .safety-note,
+  .phone-shell--chat .ai-safety,
+  .phone-shell--chat .warning,
+  .phone-shell--chat .chat-list,
+  .phone-shell--chat .voice-status,
+  .phone-shell--chat .voice-main-button,
+  .phone-shell--chat .chat-input,
+  .phone-shell--chat .chat-tools {
+    grid-column: 1;
+  }
+  .phone-shell--chat .chat-header {
+    grid-row: 1;
+  }
+  .phone-shell--chat .safety-note {
+    grid-row: 2;
+  }
+  .phone-shell--chat .chat-list {
+    grid-row: 4;
+  }
+  .phone-shell--chat .safety-zone {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: start;
+  }
+  .phone-shell--chat .more-safety-actions {
+    grid-column: 2;
+    grid-row: 3;
+    align-self: start;
+  }
+  .phone-shell--chat .action-button--danger {
+    grid-column: 2;
+    grid-row: 6;
+    align-self: end;
   }
   .chat-list {
     min-height: 0;

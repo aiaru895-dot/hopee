@@ -4,7 +4,7 @@ import { AuthPanel } from '../components/AuthPanel';
 import { ActionButton, PhoneShell, ScreenHeader, TileButton } from '../components/RyadomUi';
 import { VolunteerCard } from '../components/VolunteerCard';
 import { analyzeChatSafety, type AiSafetyResult } from '../lib/aiSafety';
-import { achievements, elders, helpCategories } from '../lib/ryadomData';
+import { achievements, elders } from '../lib/ryadomData';
 import {
   blockUser,
   createHelpRequest,
@@ -56,6 +56,14 @@ const friendsLeaderboard = [
   { name: 'Алия', score: 43 },
   { name: 'Данияр', score: 18 },
   { name: 'Мария', score: 12 },
+];
+
+const elderHelpOptions: Array<{ id: HelpCategory; label: string }> = [
+  { id: 'phone', label: 'С телефоном' },
+  { id: 'apps', label: 'С приложением' },
+  { id: 'internet', label: 'С интернетом' },
+  { id: 'messengers', label: 'С сообщением' },
+  { id: 'talk', label: 'Другое' },
 ];
 
 const guestStats: VolunteerProfileRow = {
@@ -126,6 +134,7 @@ export function HomePage() {
   const [reportReason, setReportReason] = useState<ReportReason>('trolling');
   const [reportComment, setReportComment] = useState('');
   const [blockedChat, setBlockedChat] = useState(false);
+  const [voicePrompt, setVoicePrompt] = useState(false);
   const [aiSafety, setAiSafety] = useState<AiSafetyResult | null>(null);
   const [isCheckingSafety, setIsCheckingSafety] = useState(false);
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => (localStorage.getItem('hopee-theme') === 'dark' ? 'dark' : 'light'));
@@ -276,7 +285,7 @@ export function HomePage() {
     setBlockedChat(false);
     setAiSafety(null);
     setMessages([
-      createMessage(nextSession.id, aiVolunteer.id, 'system', 'Свободных волонтёров сейчас нет. AI поможет с простыми шагами и подскажет, когда нужен человек.'),
+      createMessage(nextSession.id, aiVolunteer.id, 'system', 'Свободных помощников сейчас нет. KÖMEK поможет с простыми шагами и подскажет, когда нужен человек.'),
       createMessage(nextSession.id, aiVolunteer.id, 'text', 'Опишите, что не получается. Я отвечу спокойно и без просьб о паролях или кодах.'),
     ]);
     setStep('chat');
@@ -369,6 +378,7 @@ export function HomePage() {
 
   const sendQuickMedia = (type: ChatMessage['messageType']) => {
     if (!helpSession || blockedChat) return;
+    if (type === 'voice') setVoicePrompt(true);
     const textByType = {
       text: '',
       system: '',
@@ -423,7 +433,12 @@ export function HomePage() {
   };
 
   const stopUnsafeHelp = () => {
-    submitReport('bad_behavior', uiText[language].unsafe);
+    if (!volunteer) return;
+    createSafetyReport(helpSession, profile?.id ?? elders[0].id, volunteer.id, 'bad_behavior', uiText[language].unsafe);
+    blockUser(profile?.id ?? elders[0].id, volunteer.id);
+    setBlockedChat(true);
+    setHelpSession((current) => (current ? { ...current, status: 'reported', endedAt: new Date().toISOString() } : current));
+    setStep('blocked');
   };
 
   const finishRating = async () => {
@@ -494,17 +509,21 @@ export function HomePage() {
           <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />KÖMEK</strong>
           <button onClick={() => setStep('safety')}>{text.settings}</button>
         </header>
-        <section className="home-panel">
-          <h1>KÖMEK</h1>
-          <p className="eyebrow">{text.roleTitle}, {profileName}</p>
-          <p>{text.intro}</p>
-          <ActionButton onClick={() => setStep('category')}>{text.chooseHelp}</ActionButton>
+        <section className="home-panel elder-home-panel">
+          <p className="eyebrow">KÖMEK</p>
+          <h1>Добрый день, {profileName}.</h1>
+          <p>Чем мы можем вам помочь?</p>
+          <ActionButton onClick={() => setStep('category')}>Мне нужна помощь</ActionButton>
+          <p className="help-undertext">Мы найдём человека, который вам поможет.</p>
         </section>
-        <section className="trust-note">
-          <strong>{text.service}</strong>
-          <p>{text.intro}</p>
+        <section className="trust-note calm-panel">
+          <strong>Важное правило</strong>
+          <p>Никому не сообщайте пароль, код из SMS, PIN-код и данные банковской карты.</p>
         </section>
-        <BottomNav items={[text.help, text.history, text.settings]} onSecond={() => setStep('history')} onThird={() => setStep('safety')} />
+        <div className="secondary-actions">
+          <button onClick={() => setStep('history')}>{text.history}</button>
+          <button onClick={() => setStep('safety')}>{text.settings}</button>
+        </div>
       </PhoneShell>
     );
   }
@@ -512,13 +531,18 @@ export function HomePage() {
   if (step === 'category') {
     return (
       <PhoneShell screenKey={step} language={language}>
-        <ScreenHeader title="Нужна помощь?" subtitle={text.intro} />
-        <ActionButton onClick={() => startSearch('any')}>{text.anyHelper}</ActionButton>
-        <div className="grid">
-          {helpCategories.filter((item) => item.id !== 'any').map((item) => (
+        <ScreenHeader title="Чем вам нужна помощь?" subtitle="Можно сразу найти помощника, если вы не знаете, что выбрать." />
+        <ActionButton onClick={() => startSearch('any')}>Найти помощника</ActionButton>
+        <p className="help-undertext">Мы найдём свободного проверенного волонтёра.</p>
+        <div className="grid elder-help-grid">
+          {elderHelpOptions.map((item) => (
             <TileButton key={item.id} icon="" label={item.label} onClick={() => startSearch(item.id)} />
           ))}
         </div>
+        <section className="choice-help">
+          <p>Не знаете, что выбрать?</p>
+          <button onClick={() => startSearch('any')}>Помогите мне</button>
+        </section>
         <ActionButton tone="ghost" onClick={() => setStep('elderHome')}>{text.back}</ActionButton>
       </PhoneShell>
     );
@@ -530,8 +554,8 @@ export function HomePage() {
         <section className="center-screen">
           <div className="search-indicator" aria-hidden="true"><span /></div>
           <p className="eyebrow">{text.searchEyebrow}</p>
-          <h1>{text.searchTitle}</h1>
-          <p>{text.intro}</p>
+          <h1>Ищем помощника...</h1>
+          <p>Ищем свободного проверенного помощника. Обычно это занимает немного времени.</p>
           <div className="search-steps" aria-hidden="true">
             <span />
             <span />
@@ -546,9 +570,9 @@ export function HomePage() {
   if (step === 'found' && volunteer) {
     return (
       <PhoneShell screenKey={step} language={language}>
-        <ScreenHeader title={text.foundTitle} subtitle={`${text.theme}: ${helpCategories.find((item) => item.id === category)?.label ?? ''}`} />
+        <ScreenHeader title="Помощник найден" subtitle="Проверенный помощник готов вам помочь." />
         <VolunteerCard volunteer={volunteer} language={language} />
-        <ActionButton onClick={() => setStep('chat')}>{text.startChat}</ActionButton>
+        <ActionButton onClick={() => setStep('chat')}>Начать помощь</ActionButton>
         <ActionButton tone="ghost" onClick={() => startSearch(category)}>{text.otherHelper}</ActionButton>
       </PhoneShell>
     );
@@ -557,13 +581,13 @@ export function HomePage() {
   if (step === 'noVolunteer') {
     return (
       <PhoneShell screenKey={step} language={language}>
-        <ScreenHeader title="Нет мест" subtitle="Свободных волонтёров сейчас нет, но AI может помочь сразу." />
+        <ScreenHeader title="Сейчас все помощники заняты" subtitle="Мы можем продолжить поиск." />
         <div className="info-list">
-          <p>AI подскажет безопасные шаги и не попросит пароль, SMS-код или банковские данные.</p>
-          <p>Если появится проблема, можно отправить жалобу на модерацию.</p>
+          <p>Мы можем продолжить искать свободного помощника.</p>
+          <p>Или вы можете поговорить с голосовым помощником KÖMEK.</p>
         </div>
-        <ActionButton onClick={startAiHelp}>Начать с AI</ActionButton>
-        <ActionButton tone="ghost" onClick={() => startSearch(category)}>Искать ещё раз</ActionButton>
+        <ActionButton onClick={() => startSearch(category)}>Продолжить поиск</ActionButton>
+        <ActionButton tone="ghost" onClick={startAiHelp}>Поговорить с KÖMEK</ActionButton>
       </PhoneShell>
     );
   }
@@ -573,13 +597,14 @@ export function HomePage() {
     return (
       <PhoneShell screenKey={step} language={language}>
         <header className="chat-header">
+          <button className="back-button" onClick={() => setStep('found')}>{text.back}</button>
           <div>
             <h1>{volunteer.name} K.</h1>
-            <p>{text.verifiedHelper}</p>
+            <p>{text.verifiedHelper}. Сейчас помогает вам.</p>
           </div>
           <button onClick={() => setStep('history')}>{text.history}</button>
         </header>
-        <div className="safety-note">{text.safetyNote}</div>
+        <div className="safety-note">Никому не сообщайте: пароль, код из SMS, PIN-код и данные банковской карты.</div>
         {isCheckingSafety ? <div className="ai-safety ai-safety--checking">{text.aiChecking}</div> : null}
         {aiSafety && aiSafety.risk !== 'safe' ? (
           <div className={`ai-safety ai-safety--${aiSafety.risk}`}>
@@ -604,9 +629,14 @@ export function HomePage() {
             </div>
           ))}
         </div>
+        {voicePrompt ? <div className="voice-status">Говорите. Мы вас слушаем.</div> : null}
+        <button className="voice-main-button" disabled={blockedChat} onClick={() => sendQuickMedia('voice')}>Говорить</button>
+        <div className="chat-input">
+          <input disabled={blockedChat} value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={text.messagePlaceholder} />
+          <button disabled={blockedChat} onClick={sendText}>{text.send}</button>
+        </div>
         <div className="chat-tools">
-          <button disabled={blockedChat} onClick={() => photoInputRef.current?.click()}>{text.photo}</button>
-          <button disabled={blockedChat} onClick={() => sendQuickMedia('voice')}>{text.voice}</button>
+          <button disabled={blockedChat} onClick={() => photoInputRef.current?.click()}>Прикрепить фото</button>
           <button disabled={blockedChat} onClick={() => videoInputRef.current?.click()}>{text.video}</button>
           <input
             ref={photoInputRef}
@@ -631,15 +661,15 @@ export function HomePage() {
             }}
           />
         </div>
-        <div className="chat-input">
-          <input disabled={blockedChat} value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={text.messagePlaceholder} />
-          <button disabled={blockedChat} onClick={sendText}>{text.send}</button>
-        </div>
-        <div className="safety-actions">
-          <button onClick={() => setStep('report')}>{text.complaint}</button>
+        <div className="safety-actions safety-zone">
+          <strong>Безопасность</strong>
           <button onClick={() => setStep('unsafe')}>{text.unsafe}</button>
-          <button onClick={blockCurrentVolunteer}>{text.block}</button>
         </div>
+        <details className="more-safety-actions">
+          <summary>Другие действия</summary>
+          <button onClick={() => setStep('report')}>{text.complaint}</button>
+          <button onClick={blockCurrentVolunteer}>{text.block}</button>
+        </details>
         <ActionButton tone="danger" onClick={completeHelp}>{text.finishHelp}</ActionButton>
       </PhoneShell>
     );
@@ -666,9 +696,9 @@ export function HomePage() {
   if (step === 'unsafe') {
     return (
       <PhoneShell screenKey={step} language={language}>
-        <ScreenHeader title={text.unsafeTitle} subtitle={text.unsafeSubtitle} />
-        <ActionButton tone="danger" onClick={stopUnsafeHelp}>{text.yesStop}</ActionButton>
-        <ActionButton tone="ghost" onClick={() => setStep('chat')}>{text.cancel}</ActionButton>
+        <ScreenHeader title="Вы уверены, что хотите завершить общение?" subtitle="Если вам небезопасно, мы сразу остановим разговор и заблокируем помощника." />
+        <ActionButton tone="danger" onClick={stopUnsafeHelp}>Да, мне небезопасно</ActionButton>
+        <ActionButton tone="ghost" onClick={() => setStep('chat')}>Нет, всё в порядке</ActionButton>
       </PhoneShell>
     );
   }
@@ -676,7 +706,7 @@ export function HomePage() {
   if (step === 'blocked') {
     return (
       <PhoneShell screenKey={step} language={language}>
-        <ScreenHeader title={text.blockedTitle} subtitle={text.blockedSubtitle} />
+        <ScreenHeader title="Общение завершено" subtitle="Вы больше не будете получать сообщения от этого человека." />
         <div className="info-list">
           <p>{text.blockedHelp}</p>
           <p>{text.safetyNote}</p>
