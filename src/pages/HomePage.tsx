@@ -812,22 +812,26 @@ export function HomePage() {
           </div>
           {!isAiChat && !isVolunteerChat ? <button onClick={() => setStep('history')}>{text.history}</button> : null}
         </header>
-        {showSafetyTools ? <button className="safety-note safety-note-button" onClick={() => setStep('safetyGuide')}>Никому не сообщайте пароль, код из SMS, PIN-код и данные банковской карты. Читать правила</button> : null}
-        {showSafetyTools && isCheckingSafety ? <div className="ai-safety ai-safety--checking">{text.aiChecking}</div> : null}
-        {showSafetyTools && aiSafety && aiSafety.risk !== 'safe' ? (
-          <div className={`ai-safety ai-safety--${aiSafety.risk}`}>
-            <strong>{aiSafety.action === 'block' ? text.dialogStopped : text.cautionNeeded}</strong>
-            <p>{aiSafety.reason}</p>
-          </div>
+        {showSafetyTools ? (
+          <aside className="chat-side-alerts">
+            <button className="safety-note safety-note-button" onClick={() => setStep('safetyGuide')}>Никому не сообщайте пароль, код из SMS, PIN-код и данные банковской карты. Читать правила</button>
+            {isCheckingSafety ? <div className="ai-safety ai-safety--checking">{text.aiChecking}</div> : null}
+            {aiSafety && aiSafety.risk !== 'safe' ? (
+              <div className={`ai-safety ai-safety--${aiSafety.risk}`}>
+                <strong>{aiSafety.action === 'block' ? text.dialogStopped : text.cautionNeeded}</strong>
+                <p>{aiSafety.reason}</p>
+              </div>
+            ) : null}
+            {risk ? (
+              <div className="warning">
+                <strong>{text.beCareful}</strong>
+                <p>{text.safetyNote}</p>
+                <button onClick={() => submitReport('password', text.suspicious)}>{text.suspicious}</button>
+              </div>
+            ) : null}
+            {blockedChat ? <div className="warning">{text.blockedChat}</div> : null}
+          </aside>
         ) : null}
-        {showSafetyTools && risk ? (
-          <div className="warning">
-            <strong>{text.beCareful}</strong>
-            <p>{text.safetyNote}</p>
-            <button onClick={() => submitReport('password', text.suspicious)}>{text.suspicious}</button>
-          </div>
-        ) : null}
-        {showSafetyTools && blockedChat ? <div className="warning">{text.blockedChat}</div> : null}
         <div className="chat-list">
           {messages.map((item) => (
             <div key={item.id} className={item.senderId === myChatId ? 'message message--mine' : 'message'}>
