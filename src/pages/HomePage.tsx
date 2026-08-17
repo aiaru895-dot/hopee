@@ -27,6 +27,7 @@ import type { Achievement, ChatMessage, HelpCategory, HelpSession, ReportReason,
 
 type Step =
   | 'loading'
+  | 'welcome'
   | 'role'
   | 'databaseSetup'
   | 'elderHome'
@@ -143,6 +144,7 @@ type LeaderboardRow = {
 export function HomePage() {
   const [session, setSession] = useState<Session | null>(null);
   const [guestMode, setGuestMode] = useState(false);
+  const [welcomeSeen, setWelcomeSeen] = useState(() => localStorage.getItem('komek-welcome-seen') === 'yes');
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [volunteerStats, setVolunteerStats] = useState<VolunteerProfileRow | null>(null);
   const [step, setStep] = useState<Step>('loading');
@@ -154,6 +156,7 @@ export function HomePage() {
   const [draft, setDraft] = useState('');
   const [rating, setRating] = useState(0);
   const [message, setMessage] = useState('');
+  const [firstActionPraise, setFirstActionPraise] = useState('');
   const [databaseError, setDatabaseError] = useState('');
   const [reportReason, setReportReason] = useState<ReportReason>('trolling');
   const [reportComment, setReportComment] = useState('');
@@ -193,7 +196,7 @@ export function HomePage() {
     if (!session) {
       if (!guestMode) {
         setProfile(null);
-        setStep('role');
+        setStep(welcomeSeen ? 'role' : 'welcome');
       }
       return;
     }
@@ -202,7 +205,7 @@ export function HomePage() {
       .then(async (savedProfile) => {
         if (!savedProfile) {
           setProfile(null);
-          setStep('role');
+          setStep(welcomeSeen ? 'role' : 'welcome');
           return;
         }
         const cleanName = cleanDisplayName(savedProfile.name, savedProfile.role);
@@ -217,7 +220,7 @@ export function HomePage() {
         setDatabaseError(error.message);
         setStep('databaseSetup');
       });
-  }, [session, guestMode]);
+  }, [session, guestMode, welcomeSeen]);
 
   useEffect(() => () => {
     window.clearTimeout(searchTimerRef.current);
@@ -247,6 +250,7 @@ export function HomePage() {
 
   const chooseRole = async (nextRole: Role) => {
     setRole(nextRole);
+    setFirstActionPraise(nextRole === 'elder' ? 'Отлично. Теперь можно сразу попросить помощь.' : 'Отлично. Вы готовы принять первую просьбу о помощи.');
     if (guestMode) {
       playOpenSound();
       const guestId = `guest-${nextRole}`;
@@ -420,6 +424,10 @@ export function HomePage() {
     const nextMessages = [...messages, nextMessage];
     setMessages(nextMessages);
     setDraft('');
+    if (volunteer?.id === aiVolunteer.id) {
+      await answerWithAi(nextMessages, userText);
+      return;
+    }
     setIsCheckingSafety(true);
     const result = await analyzeChatSafety(nextMessages);
     setAiSafety(result);
@@ -592,6 +600,12 @@ export function HomePage() {
     setStep('role');
   };
 
+  const finishWelcome = () => {
+    localStorage.setItem('komek-welcome-seen', 'yes');
+    setWelcomeSeen(true);
+    setStep('role');
+  };
+
   const signOutApp = async () => {
     playCloseSound();
     setGuestMode(false);
@@ -599,13 +613,30 @@ export function HomePage() {
     setVolunteerStats(null);
     setHelpSession(undefined);
     setMessages([]);
-    setStep('role');
+    setStep('welcome');
     await supabase.auth.signOut();
   };
 
-  if (!session && !guestMode) return <AuthPanel language={language} onGuest={enterAsGuest} />;
+  if (!session && !guestMode && welcomeSeen && step !== 'welcome') return <AuthPanel language={language} onGuest={enterAsGuest} />;
 
   if (step === 'loading') return <LoadingScreen title={text.searchEyebrow} />;
+
+  if (step === 'welcome') {
+    return (
+      <PhoneShell screenKey={step} language={language}>
+        <section className="welcome-screen">
+          <img className="brand-symbol brand-symbol--hero" src="/app-icon.svg" alt="" aria-hidden="true" />
+          <p className="eyebrow">KÖMEK</p>
+          <h1>Помощь рядом</h1>
+          <p>Найдите волонтёра или поговорите с голосовым ИИ-помощником.</p>
+          <div className="welcome-actions">
+            <ActionButton onClick={finishWelcome}>Начать</ActionButton>
+            {!session ? <ActionButton tone="calm" onClick={enterAsGuest}>Попробовать как гость</ActionButton> : null}
+          </div>
+        </section>
+      </PhoneShell>
+    );
+  }
 
   if (step === 'role') {
     return (
@@ -644,6 +675,7 @@ export function HomePage() {
           <button onClick={() => setStep('safety')}>{text.settings}</button>
         </header>
         <section className="home-panel elder-home-panel">
+          {firstActionPraise ? <div className="praise-banner">{firstActionPraise}</div> : null}
           <p className="eyebrow">KÖMEK</p>
           <h1>Добрый день, {profileName}.</h1>
           <p>Чем мы можем вам помочь?</p>
@@ -730,26 +762,27 @@ export function HomePage() {
   }
 
   if (step === 'chat' && volunteer) {
+    const isAiChat = volunteer.id === aiVolunteer.id;
     const risk = messages.some((item) => hasSafetyRisk(item.text));
     return (
       <PhoneShell screenKey={step} language={language}>
         <header className="chat-header">
-          <button className="back-button" onClick={() => setStep('found')}>{text.back}</button>
+          <button className="back-button" onClick={() => setStep(isAiChat ? 'elderHome' : 'found')}>{text.back}</button>
           <div>
-            <h1>{volunteer.name} K.</h1>
-            <p>{text.verifiedHelper}. Сейчас помогает вам.</p>
+            <h1>{isAiChat ? 'KÖMEK AI' : `${volunteer.name} K.`}</h1>
+            <p>{isAiChat ? 'Голосовой помощник' : `${text.verifiedHelper}. Сейчас помогает вам.`}</p>
           </div>
-          <button onClick={() => setStep('history')}>{text.history}</button>
+          {!isAiChat ? <button onClick={() => setStep('history')}>{text.history}</button> : null}
         </header>
-        <button className="safety-note safety-note-button" onClick={() => setStep('safetyGuide')}>Никому не сообщайте пароль, код из SMS, PIN-код и данные банковской карты. Читать правила</button>
-        {isCheckingSafety ? <div className="ai-safety ai-safety--checking">{text.aiChecking}</div> : null}
-        {aiSafety && aiSafety.risk !== 'safe' ? (
+        {!isAiChat ? <button className="safety-note safety-note-button" onClick={() => setStep('safetyGuide')}>Никому не сообщайте пароль, код из SMS, PIN-код и данные банковской карты. Читать правила</button> : null}
+        {!isAiChat && isCheckingSafety ? <div className="ai-safety ai-safety--checking">{text.aiChecking}</div> : null}
+        {!isAiChat && aiSafety && aiSafety.risk !== 'safe' ? (
           <div className={`ai-safety ai-safety--${aiSafety.risk}`}>
             <strong>{aiSafety.action === 'block' ? text.dialogStopped : text.cautionNeeded}</strong>
             <p>{aiSafety.reason}</p>
           </div>
         ) : null}
-        {risk ? (
+        {!isAiChat && risk ? (
           <div className="warning">
             <strong>{text.beCareful}</strong>
             <p>{text.safetyNote}</p>
@@ -759,7 +792,7 @@ export function HomePage() {
         {blockedChat ? <div className="warning">{text.blockedChat}</div> : null}
         <div className="chat-list">
           {messages.map((item) => (
-            <div key={item.id} className={item.senderId === profile?.id ? 'message message--mine' : 'message'}>
+            <div key={item.id} className={item.senderId === myChatId ? 'message message--mine' : 'message'}>
               {item.messageType === 'photo' && item.fileUrl ? <img className="message-media" src={item.fileUrl} alt={item.fileName ?? text.photo} /> : null}
               {item.messageType === 'video' && item.fileUrl ? <video className="message-media" src={item.fileUrl} controls /> : null}
               {item.messageType === 'voice' && item.fileUrl ? <audio className="voice-message" src={item.fileUrl} controls /> : null}
@@ -774,7 +807,7 @@ export function HomePage() {
           <button className="voice-round-button" disabled={blockedChat} onClick={toggleVoiceRecording}>{isRecordingVoice ? 'Стоп' : 'Голос'}</button>
           <button disabled={blockedChat} onClick={sendText}>{text.send}</button>
         </div>
-        <div className="chat-tools">
+        {!isAiChat ? <div className="chat-tools">
           <button disabled={blockedChat} onClick={() => photoInputRef.current?.click()}>Прикрепить фото</button>
           <button disabled={blockedChat} onClick={() => videoInputRef.current?.click()}>{text.video}</button>
           <input
@@ -799,17 +832,17 @@ export function HomePage() {
               event.target.value = '';
             }}
           />
-        </div>
-        <div className="safety-actions safety-zone">
+        </div> : null}
+        {!isAiChat ? <div className="safety-actions safety-zone">
           <strong>Безопасность</strong>
-          <button onClick={() => setStep('unsafe')}>{text.unsafe}</button>
-        </div>
-        <details className="more-safety-actions">
+          <button onClick={stopUnsafeHelp}>{text.unsafe}</button>
+        </div> : null}
+        {!isAiChat ? <details className="more-safety-actions">
           <summary>Другие действия</summary>
           <button onClick={() => setStep('report')}>{text.complaint}</button>
           <button onClick={blockCurrentVolunteer}>{text.block}</button>
-        </details>
-        <ActionButton tone="danger" onClick={completeHelp}>{text.finishHelp}</ActionButton>
+        </details> : null}
+        {!isAiChat ? <ActionButton tone="danger" onClick={completeHelp}>{text.finishHelp}</ActionButton> : null}
       </PhoneShell>
     );
   }
@@ -917,6 +950,7 @@ export function HomePage() {
           <button onClick={() => setStep('admin')}>{text.profile}</button>
         </header>
         <ScreenHeader title={`${text.hello}, ${profileName}`} subtitle={text.helpStatus} />
+        {firstActionPraise ? <div className="praise-banner">{firstActionPraise}</div> : null}
         <section className="status-card">
           <div>
             <p className="eyebrow">{text.readiness}</p>

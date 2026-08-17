@@ -180,6 +180,44 @@ button, input { font: inherit; }
   height: 112px;
   animation: brand-float 3.4s ease-in-out infinite;
 }
+.welcome-screen {
+  min-height: calc(100dvh - 48px);
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 16px;
+  text-align: center;
+}
+.welcome-screen h1 {
+  margin: 0;
+  font-size: 48px;
+  line-height: 1.04;
+  font-weight: 780;
+}
+.welcome-screen p {
+  max-width: 420px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 22px;
+  line-height: 1.42;
+}
+.welcome-actions {
+  width: min(100%, 420px);
+  display: grid;
+  gap: 12px;
+  margin-top: 10px;
+}
+.praise-banner {
+  border: 1px solid #b9e8ad;
+  border-radius: 14px;
+  background: #d8f7cf;
+  color: #24533a;
+  padding: 14px 16px;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.35;
+  animation: praise-pop 0.42s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
 .brand-mark {
   width: 28px;
   height: 28px;
@@ -1137,6 +1175,11 @@ input {
     transform: translateY(0) scale(1);
     filter: blur(0);
   }
+}
+
+@keyframes praise-pop {
+  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes person-rise {
