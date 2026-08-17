@@ -76,6 +76,10 @@ type SpeechWindow = Window & typeof globalThis & {
   SpeechRecognition?: new () => SpeechRecognitionLike;
   webkitSpeechRecognition?: new () => SpeechRecognitionLike;
 };
+type AiFunctionResponse = {
+  text?: string;
+  error?: string;
+};
 
 const friendsLeaderboard = [
   { name: 'Алия', score: 43 },
@@ -132,6 +136,17 @@ const aiVolunteer: Volunteer = {
     blockedCount: 0,
     online: true,
     busy: false,
+  },
+};
+
+const elderChatPartner: Volunteer = {
+  ...elders[0],
+  status: 'online',
+  profile: {
+    ...aiVolunteer.profile,
+    userId: elders[0].id,
+    skills: ['talk'],
+    title: 'Пожилой пользователь',
   },
 };
 
@@ -338,17 +353,31 @@ export function HomePage() {
 
   const answerWithAi = async (conversation: ChatMessage[], userText: string) => {
     if (!helpSession || volunteer?.id !== aiVolunteer.id || !userText.trim()) return;
-    const { data, error } = await supabase.functions.invoke<{ text?: string }>('ai', {
-      body: {
-        prompt: userText,
-        system: 'Ты голосовой помощник KÖMEK для пожилых людей. Отвечай коротко, спокойно, пошагово. Не проси пароли, SMS-коды, PIN, данные карт. Если вопрос опасный или сложный, предложи позвать живого волонтера.',
-      },
-    });
-    const answer = error || !data?.text
-      ? 'Я рядом. Давайте попробуем по шагам. Опишите, что видно на экране, и я подскажу дальше.'
-      : data.text;
-    setMessages([...conversation, createMessage(helpSession.id, aiVolunteer.id, 'text', answer)]);
-    speakAiAnswer(answer);
+    const prompt = conversation
+      .filter((item) => item.messageType !== 'system')
+      .slice(-10)
+      .map((item) => `${item.senderId === myChatId ? 'Пользователь' : 'KÖMEK'}: ${item.text}`)
+      .join('\n');
+
+    try {
+      const { data, error } = await supabase.functions.invoke<AiFunctionResponse>('ai', {
+        body: {
+          prompt,
+          system: 'Ты KÖMEK AI, дружелюбный голосовой помощник для пожилых людей. Веди обычную переписку, отвечай по смыслу последнего сообщения, не повторяй один и тот же шаблон. Если спрашивают про устройство, давай конкретные шаги. Если пользователь просто здоровается или ругается, отвечай спокойно и по-человечески. Никогда не проси пароли, SMS-коды, PIN или данные карт.',
+        },
+      });
+      const answer = data?.text?.trim();
+      if (error || !answer) {
+        const reason = data?.error || error?.message || 'пустой ответ от функции';
+        setMessages([...conversation, createMessage(helpSession.id, aiVolunteer.id, 'text', `AI не подключился: ${reason}`)]);
+        return;
+      }
+      setMessages([...conversation, createMessage(helpSession.id, aiVolunteer.id, 'text', answer)]);
+      speakAiAnswer(answer);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : 'неизвестная ошибка';
+      setMessages([...conversation, createMessage(helpSession.id, aiVolunteer.id, 'text', `AI не подключился: ${reason}`)]);
+    }
   };
 
   const startSearchSound = () => {
@@ -428,6 +457,7 @@ export function HomePage() {
       await answerWithAi(nextMessages, userText);
       return;
     }
+    if (role === 'volunteer') return;
     setIsCheckingSafety(true);
     const result = await analyzeChatSafety(nextMessages);
     setAiSafety(result);
@@ -547,15 +577,21 @@ export function HomePage() {
   };
 
   const acceptIncomingRequest = () => {
-    const matched = findRandomVolunteer('talk') ?? findRandomVolunteer('any');
-    if (!matched) return;
     const request = createHelpRequest(elders[0].id, 'talk');
-    const nextSession = createHelpSession(request, matched);
-    setVolunteer(matched);
+    const helperProfile: Volunteer = {
+      ...aiVolunteer,
+      id: profile?.id ?? 'guest-volunteer',
+      name: profileName,
+    };
+    const nextSession = createHelpSession(request, helperProfile);
+    setVolunteer(elderChatPartner);
     setHelpSession(nextSession);
     setBlockedChat(false);
     setAiSafety(null);
-    setMessages(createStarterMessages(nextSession.id, profile?.id ?? matched.id));
+    setMessages([
+      createMessage(nextSession.id, elders[0].id, 'text', 'Здравствуйте. Мне нужна помощь с телефоном.'),
+      createMessage(nextSession.id, elders[0].id, 'text', 'Не могу найти сообщения в приложении.'),
+    ]);
     setStep('chat');
   };
 
@@ -763,33 +799,35 @@ export function HomePage() {
 
   if (step === 'chat' && volunteer) {
     const isAiChat = volunteer.id === aiVolunteer.id;
-    const risk = messages.some((item) => hasSafetyRisk(item.text));
+    const isVolunteerChat = role === 'volunteer' || profile?.role === 'volunteer';
+    const showSafetyTools = !isAiChat && !isVolunteerChat;
+    const risk = showSafetyTools && messages.some((item) => hasSafetyRisk(item.text));
     return (
       <PhoneShell screenKey={step} language={language}>
         <header className="chat-header">
-          <button className="back-button" onClick={() => setStep(isAiChat ? 'elderHome' : 'found')}>{text.back}</button>
+          <button className="back-button" onClick={() => setStep(isVolunteerChat ? 'volunteerHome' : isAiChat ? 'elderHome' : 'found')}>{text.back}</button>
           <div>
-            <h1>{isAiChat ? 'KÖMEK AI' : `${volunteer.name} K.`}</h1>
-            <p>{isAiChat ? 'Голосовой помощник' : `${text.verifiedHelper}. Сейчас помогает вам.`}</p>
+            <h1>{isAiChat ? 'KÖMEK AI' : isVolunteerChat ? volunteer.name : `${volunteer.name} K.`}</h1>
+            <p>{isAiChat ? 'Голосовой помощник' : isVolunteerChat ? 'Пожилой пользователь пишет вам' : `${text.verifiedHelper}. Сейчас помогает вам.`}</p>
           </div>
-          {!isAiChat ? <button onClick={() => setStep('history')}>{text.history}</button> : null}
+          {!isAiChat && !isVolunteerChat ? <button onClick={() => setStep('history')}>{text.history}</button> : null}
         </header>
-        {!isAiChat ? <button className="safety-note safety-note-button" onClick={() => setStep('safetyGuide')}>Никому не сообщайте пароль, код из SMS, PIN-код и данные банковской карты. Читать правила</button> : null}
-        {!isAiChat && isCheckingSafety ? <div className="ai-safety ai-safety--checking">{text.aiChecking}</div> : null}
-        {!isAiChat && aiSafety && aiSafety.risk !== 'safe' ? (
+        {showSafetyTools ? <button className="safety-note safety-note-button" onClick={() => setStep('safetyGuide')}>Никому не сообщайте пароль, код из SMS, PIN-код и данные банковской карты. Читать правила</button> : null}
+        {showSafetyTools && isCheckingSafety ? <div className="ai-safety ai-safety--checking">{text.aiChecking}</div> : null}
+        {showSafetyTools && aiSafety && aiSafety.risk !== 'safe' ? (
           <div className={`ai-safety ai-safety--${aiSafety.risk}`}>
             <strong>{aiSafety.action === 'block' ? text.dialogStopped : text.cautionNeeded}</strong>
             <p>{aiSafety.reason}</p>
           </div>
         ) : null}
-        {!isAiChat && risk ? (
+        {showSafetyTools && risk ? (
           <div className="warning">
             <strong>{text.beCareful}</strong>
             <p>{text.safetyNote}</p>
             <button onClick={() => submitReport('password', text.suspicious)}>{text.suspicious}</button>
           </div>
         ) : null}
-        {blockedChat ? <div className="warning">{text.blockedChat}</div> : null}
+        {showSafetyTools && blockedChat ? <div className="warning">{text.blockedChat}</div> : null}
         <div className="chat-list">
           {messages.map((item) => (
             <div key={item.id} className={item.senderId === myChatId ? 'message message--mine' : 'message'}>
@@ -833,16 +871,16 @@ export function HomePage() {
             }}
           />
         </div> : null}
-        {!isAiChat ? <div className="safety-actions safety-zone">
+        {showSafetyTools ? <div className="safety-actions safety-zone">
           <strong>Безопасность</strong>
           <button onClick={stopUnsafeHelp}>{text.unsafe}</button>
         </div> : null}
-        {!isAiChat ? <details className="more-safety-actions">
+        {showSafetyTools ? <details className="more-safety-actions">
           <summary>Другие действия</summary>
           <button onClick={() => setStep('report')}>{text.complaint}</button>
           <button onClick={blockCurrentVolunteer}>{text.block}</button>
         </details> : null}
-        {!isAiChat ? <ActionButton tone="danger" onClick={completeHelp}>{text.finishHelp}</ActionButton> : null}
+        {!isAiChat ? <ActionButton tone="danger" onClick={isVolunteerChat ? () => setStep('volunteerHome') : completeHelp}>{isVolunteerChat ? 'Закончить разговор' : text.finishHelp}</ActionButton> : null}
       </PhoneShell>
     );
   }

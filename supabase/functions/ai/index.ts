@@ -20,6 +20,11 @@ type GeminiResponse = {
       parts?: Array<{ text?: unknown }>;
     };
   }>;
+  error?: {
+    code?: number;
+    message?: string;
+    status?: string;
+  };
 };
 
 function json(body: object, status = 200) {
@@ -70,7 +75,8 @@ Deno.serve(async (req) => {
     const data = (await response.json()) as GeminiResponse;
     if (!response.ok) {
       console.error('Gemini request failed', response.status, data);
-      return json({ error: 'AI сейчас не ответил. Попробуй ещё раз чуть позже.' }, 502);
+      const geminiError = data.error?.message ? ` Gemini: ${data.error.message}` : '';
+      return json({ error: `AI сейчас не ответил. Код ${response.status}.${geminiError}` }, 502);
     }
 
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
