@@ -4,14 +4,13 @@ import { AuthPanel } from '../components/AuthPanel';
 import { ActionButton, PhoneShell, ScreenHeader, TileButton } from '../components/RyadomUi';
 import { VolunteerCard } from '../components/VolunteerCard';
 import { analyzeChatSafety, type AiSafetyResult } from '../lib/aiSafety';
-import { achievements, elders } from '../lib/ryadomData';
+import { achievements } from '../lib/ryadomData';
 import {
   blockUser,
   createHelpRequest,
   createHelpSession,
   createMessage,
   createSafetyReport,
-  createStarterMessages,
   findRandomVolunteer,
   finishHelpSession,
   getSafetyReports,
@@ -81,12 +80,6 @@ type AiFunctionResponse = {
   error?: string;
 };
 
-const friendsLeaderboard = [
-  { name: 'Алия', score: 43 },
-  { name: 'Данияр', score: 18 },
-  { name: 'Мария', score: 12 },
-];
-
 const elderHelpOptions: Array<{ id: HelpCategory; label: string }> = [
   { id: 'phone', label: 'С телефоном' },
   { id: 'apps', label: 'С приложением' },
@@ -149,22 +142,6 @@ const komekAiSystemPrompt = `
 Если проблема опасная, банковская или срочная, предложи позвать живого волонтёра или близкого человека.
 `;
 
-const elderChatPartner: Volunteer = {
-  ...elders[0],
-  status: 'online',
-  profile: {
-    ...aiVolunteer.profile,
-    userId: elders[0].id,
-    skills: ['talk'],
-    title: 'Пожилой пользователь',
-  },
-};
-
-type LeaderboardRow = {
-  name: string;
-  score: number;
-  current: boolean;
-};
 
 export function HomePage() {
   const [session, setSession] = useState<Session | null>(null);
@@ -209,7 +186,7 @@ export function HomePage() {
   const visibleAchievements = useMemo(() => achievements.slice(0, 3), []);
   const text = uiText[language];
   const profileName = cleanDisplayName(profile?.name, profile?.role ?? role);
-  const myChatId = profile?.id ?? (role === 'elder' ? elders[0].id : 'guest-volunteer');
+  const myChatId = profile?.id ?? (role === 'elder' ? 'guest-elder' : 'guest-volunteer');
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -315,10 +292,10 @@ export function HomePage() {
     startSearchSound();
     setCategory(help);
     setStep('search');
-    const request = createHelpRequest(profile?.id ?? elders[0].id, help);
+    const request = createHelpRequest(profile?.id ?? 'guest-elder', help);
 
     searchTimerRef.current = window.setTimeout(() => {
-      const elderId = profile?.id ?? elders[0].id;
+      const elderId = profile?.id ?? 'guest-elder';
       const matched = findRandomVolunteer(help, elderId) ?? findRandomVolunteer('any', elderId);
       if (!matched) {
         stopSearchSound();
@@ -331,7 +308,7 @@ export function HomePage() {
       setHelpSession(nextSession);
       setBlockedChat(false);
       setAiSafety(null);
-      setMessages(createStarterMessages(nextSession.id, matched.id));
+      setMessages([]);
       stopSearchSound();
       setStep('found');
     }, 1800);
@@ -378,16 +355,26 @@ export function HomePage() {
       });
       const answer = data?.text?.trim();
       if (error || !answer) {
-        const reason = data?.error || error?.message || 'пустой ответ от функции';
-        setMessages([...conversation, createMessage(helpSession.id, aiVolunteer.id, 'text', `AI не подключился: ${reason}`)]);
+        const reason = formatAiConnectionError(data?.error || error?.message || 'пустой ответ от функции');
+        setMessages([...conversation, createMessage(helpSession.id, aiVolunteer.id, 'text', reason)]);
         return;
       }
       setMessages([...conversation, createMessage(helpSession.id, aiVolunteer.id, 'text', answer)]);
       speakAiAnswer(answer);
     } catch (error) {
-      const reason = error instanceof Error ? error.message : 'неизвестная ошибка';
-      setMessages([...conversation, createMessage(helpSession.id, aiVolunteer.id, 'text', `AI не подключился: ${reason}`)]);
+      const reason = formatAiConnectionError(error instanceof Error ? error.message : 'неизвестная ошибка');
+      setMessages([...conversation, createMessage(helpSession.id, aiVolunteer.id, 'text', reason)]);
     }
+  };
+
+  const formatAiConnectionError = (reason: string) => {
+    if (/429|credits are depleted|prepayment credits/i.test(reason)) {
+      return 'ИИ-помощник сейчас не отвечает: у Gemini API закончились кредиты. Нужно обновить billing/credits в Google AI Studio, потом чат снова заработает.';
+    }
+    if (/GEMINI_API_KEY|не настроен|secret/i.test(reason)) {
+      return 'ИИ-помощник сейчас не подключён: ключ Gemini не загружен в Supabase. Нужно выполнить npm run ai:secret.';
+    }
+    return `ИИ-помощник сейчас не ответил: ${reason}`;
   };
 
   const startSearchSound = () => {
@@ -474,8 +461,8 @@ export function HomePage() {
     setIsCheckingSafety(false);
 
     if (result.action === 'block' && volunteer) {
-      createSafetyReport(helpSession, profile?.id ?? elders[0].id, volunteer.id, 'password', result.reason);
-      blockUser(profile?.id ?? elders[0].id, volunteer.id);
+      createSafetyReport(helpSession, profile?.id ?? 'guest-elder', volunteer.id, 'password', result.reason);
+      blockUser(profile?.id ?? 'guest-elder', volunteer.id);
       setBlockedChat(true);
       setHelpSession((current) => (current ? { ...current, status: 'reported', endedAt: new Date().toISOString() } : current));
       return;
@@ -577,7 +564,7 @@ export function HomePage() {
     const fallbackText = type === 'photo' ? uiText[language].photo : uiText[language].video;
     setMessages((items) => [
       ...items,
-      createMessage(helpSession.id, profile?.id ?? elders[0].id, type, file.name || fallbackText, { url, name: file.name || fallbackText }),
+      createMessage(helpSession.id, profile?.id ?? 'guest-elder', type, file.name || fallbackText, { url, name: file.name || fallbackText }),
     ]);
   };
 
@@ -586,35 +573,17 @@ export function HomePage() {
     setStep('rating');
   };
 
-  const acceptIncomingRequest = () => {
-    const request = createHelpRequest(elders[0].id, 'talk');
-    const helperProfile: Volunteer = {
-      ...aiVolunteer,
-      id: profile?.id ?? 'guest-volunteer',
-      name: profileName,
-    };
-    const nextSession = createHelpSession(request, helperProfile);
-    setVolunteer(elderChatPartner);
-    setHelpSession(nextSession);
-    setBlockedChat(false);
-    setAiSafety(null);
-    setMessages([
-      createMessage(nextSession.id, elders[0].id, 'text', 'Здравствуйте. Мне нужна помощь с телефоном.'),
-      createMessage(nextSession.id, elders[0].id, 'text', 'Не могу найти сообщения в приложении.'),
-    ]);
-    setStep('chat');
-  };
 
   const submitReport = (reason: ReportReason, comment = reportComment) => {
     if (!volunteer) return;
-    createSafetyReport(helpSession, profile?.id ?? elders[0].id, volunteer.id, reason, comment);
+    createSafetyReport(helpSession, profile?.id ?? 'guest-elder', volunteer.id, reason, comment);
     setReportComment('');
     setStep('safety');
   };
 
   const blockCurrentVolunteer = () => {
     if (!volunteer) return;
-    blockUser(profile?.id ?? elders[0].id, volunteer.id);
+    blockUser(profile?.id ?? 'guest-elder', volunteer.id);
     setBlockedChat(true);
     setHelpSession((current) => (current ? { ...current, status: 'reported', endedAt: new Date().toISOString() } : current));
     setStep('blocked');
@@ -622,8 +591,8 @@ export function HomePage() {
 
   const stopUnsafeHelp = () => {
     if (!volunteer) return;
-    createSafetyReport(helpSession, profile?.id ?? elders[0].id, volunteer.id, 'bad_behavior', uiText[language].unsafe);
-    blockUser(profile?.id ?? elders[0].id, volunteer.id);
+    createSafetyReport(helpSession, profile?.id ?? 'guest-elder', volunteer.id, 'bad_behavior', uiText[language].unsafe);
+    blockUser(profile?.id ?? 'guest-elder', volunteer.id);
     setBlockedChat(true);
     setHelpSession((current) => (current ? { ...current, status: 'reported', endedAt: new Date().toISOString() } : current));
     setStep('blocked');
@@ -995,42 +964,70 @@ export function HomePage() {
   }
 
   if (step === 'volunteerHome') {
-    const xp = volunteerStats?.xp ?? 0;
-    const level = volunteerStats?.level ?? 1;
     const helped = volunteerStats?.people_helped ?? 0;
     const ratingValue = volunteerStats?.rating ?? 0;
 
     return (
       <PhoneShell screenKey={step} language={language}>
-        <header className="top-bar">
-          <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />KÖMEK</strong>
-          <button onClick={() => setStep('admin')}>{text.profile}</button>
-        </header>
-        <ScreenHeader title={`${text.hello}, ${profileName}`} subtitle={text.helpStatus} />
-        {firstActionPraise ? <div className="praise-banner">{firstActionPraise}</div> : null}
-        <section className="status-card">
-          <div>
-            <p className="eyebrow">{text.readiness}</p>
-            <h2>{text.readyToHelp}</h2>
-            <p>{text.readyDescription}</p>
-          </div>
-          <span>ON</span>
+        <section className="volunteer-dashboard">
+          <aside className="volunteer-sidebar">
+            <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />KÖMEK</strong>
+            <nav>
+              <button className="active">Главная</button>
+              <button onClick={() => setStep('incoming')}>Обращения</button>
+              <button onClick={() => setStep('history')}>Чаты</button>
+              <button onClick={() => setStep('history')}>История</button>
+              <button onClick={() => setStep('volunteerProfile')}>Достижения</button>
+              <button onClick={() => setStep('admin')}>Профиль</button>
+              <button onClick={() => setStep('safety')}>Настройки</button>
+            </nav>
+            <div className="volunteer-online">
+              <span>Вы онлайн</span>
+              <button>Стать недоступным</button>
+            </div>
+          </aside>
+          <main className="volunteer-workspace">
+            <header className="volunteer-topline">
+              <div>
+                <p className="eyebrow">Панель волонтёра</p>
+                <h1>{profileName}</h1>
+              </div>
+              <button onClick={() => setStep('admin')}>Профиль</button>
+            </header>
+            {firstActionPraise ? <div className="praise-banner">{firstActionPraise}</div> : null}
+            <section className="volunteer-requests">
+              <div>
+                <h2>Обращения</h2>
+                <p>Здесь появятся настоящие просьбы от пожилых пользователей.</p>
+              </div>
+              <button onClick={() => setStep('incoming')}>Открыть обращения</button>
+            </section>
+            <section className="volunteer-chat-preview">
+              <div>
+                <h2>Чаты</h2>
+                <p>Пока активных чатов нет. Когда вы примете реальное обращение, переписка откроется здесь.</p>
+              </div>
+            </section>
+          </main>
+          <aside className="volunteer-profile-panel">
+            <p className="eyebrow">Репутация</p>
+            <h2>{profileName}</h2>
+            <p>Проверенный помощник</p>
+            <div className="volunteer-reputation">
+              <b><span>{helped}</span>успешных помощей</b>
+              <b><span>{ratingValue.toFixed(1)}</span>рейтинг</b>
+              <b><span>{helped > 0 ? 'Высокая' : 'Новая'}</span>надёжность</b>
+            </div>
+            {helped === 0 ? <p className="empty-state">{text.noActivity}</p> : null}
+          </aside>
         </section>
-        <div className="stats">
-          <b><span>{helped}</span>{text.helpedCount}</b>
-          <b><span>{ratingValue.toFixed(1)}</span>{text.score}</b>
-          <b><span>{xp}</span>XP</b>
-        </div>
-        {helped === 0 ? <p className="empty-state">{text.noActivity}</p> : null}
-        <section className="level-card">
-          <p>LEVEL {String(level).padStart(2, '0')}</p>
-          <h2>{volunteerStats?.title ?? text.reliableHelper}</h2>
-          <div className="progress"><span style={{ width: `${Math.min(100, (xp % 1000) / 10)}%` }} /></div>
-          <small>{xp} / 1000 XP</small>
-        </section>
-        <Leaderboard title={text.leaderboard} currentName={profileName} currentScore={helped} />
-        <ActionButton onClick={() => setStep('incoming')}>{text.showRequest}</ActionButton>
-        <BottomNav items={[text.help, text.progress, text.profile]} onSecond={() => setStep('volunteerProfile')} onThird={() => setStep('admin')} />
+        <BottomNav
+          items={['Главная', 'Обращения', 'Чаты', 'Профиль']}
+          onFirst={() => setStep('volunteerHome')}
+          onSecond={() => setStep('incoming')}
+          onThird={() => setStep('history')}
+          onFourth={() => setStep('admin')}
+        />
       </PhoneShell>
     );
   }
@@ -1038,8 +1035,11 @@ export function HomePage() {
   if (step === 'incoming') {
     return (
       <PhoneShell screenKey={step} language={language}>
-        <ScreenHeader title={text.incomingTitle} subtitle={text.incomingSubtitle} />
-        <ActionButton onClick={acceptIncomingRequest}>{text.accept}</ActionButton>
+        <ScreenHeader title="Пока нет реальных запросов" subtitle="Когда пожилой пользователь отправит настоящую просьбу, она появится здесь." />
+        <div className="info-list">
+          <p>Фейковые просьбы отключены.</p>
+          <p>Сейчас можно ждать настоящие обращения.</p>
+        </div>
         <ActionButton tone="ghost" onClick={() => setStep('volunteerHome')}>{text.notNow}</ActionButton>
       </PhoneShell>
     );
@@ -1067,26 +1067,6 @@ export function HomePage() {
   }
 
   return null;
-}
-
-function Leaderboard({ title, currentName, currentScore }: { title: string; currentName: string; currentScore: number }) {
-  const friends = currentScore > 0 ? friendsLeaderboard : [];
-  const rows: LeaderboardRow[] = [{ name: currentName, score: currentScore, current: true }, ...friends.map((friend) => ({ ...friend, current: false }))]
-    .sort((first, second) => second.score - first.score)
-    .slice(0, 4);
-
-  return (
-    <section className="leaderboard">
-      <h2>{title}</h2>
-      {rows.map((row, index) => (
-        <div key={`${row.name}-${index}`} className={row.current ? 'leaderboard-row leaderboard-row--me' : 'leaderboard-row'}>
-          <span>{index + 1}</span>
-          <strong>{row.name}</strong>
-          <b>{row.score}</b>
-        </div>
-      ))}
-    </section>
-  );
 }
 
 function LoadingScreen({ title }: { title: string }) {
@@ -1135,12 +1115,31 @@ function RoleChoiceHero() {
   );
 }
 
-function BottomNav({ items, onSecond, onThird }: { items: string[]; onSecond: () => void; onThird: () => void }) {
+function BottomNav({
+  items,
+  onFirst,
+  onSecond,
+  onThird,
+  onFourth,
+}: {
+  items: string[];
+  onFirst: () => void;
+  onSecond: () => void;
+  onThird: () => void;
+  onFourth: () => void;
+}) {
+  const icons = ['home', 'requests', 'chats', 'profile'];
   return (
     <nav className="bottom-nav">
-      <button>{items[0]}</button>
-      <button onClick={onSecond}>{items[1]}</button>
-      <button onClick={onThird}>{items[2]}</button>
+      {items.map((item, index) => {
+        const actions = [onFirst, onSecond, onThird, onFourth];
+        return (
+          <button key={item} className={`bottom-nav__item bottom-nav__item--${icons[index]}`} onClick={actions[index]}>
+            <span aria-hidden="true" />
+            <b>{item}</b>
+          </button>
+        );
+      })}
     </nav>
   );
 }

@@ -1,7 +1,7 @@
-﻿import { achievements, starterMessages, volunteers } from './ryadomData';
+﻿import { achievements, starterMessages } from './ryadomData';
 import type { ChatMessage, HelpCategory, HelpSession, MatchRequest, ReportReason, SafetyReport, User, Volunteer } from './ryadomTypes';
 
-let liveVolunteers = volunteers.map((volunteer) => structuredClone(volunteer));
+let liveVolunteers: Volunteer[] = [];
 let safetyReports: SafetyReport[] = [];
 let blockedPairs: Array<{ blockerId: string; blockedUserId: string }> = [];
 
@@ -147,7 +147,7 @@ export function setVolunteerOnline(volunteerId: string, online: boolean): Volunt
 }
 
 export function resetMockBackend() {
-  liveVolunteers = volunteers.map((volunteer) => structuredClone(volunteer));
+  liveVolunteers = [];
   safetyReports = [];
   blockedPairs = [];
 }
@@ -200,3 +200,4 @@ function setVolunteerBusy(volunteerId: string, busy: boolean) {
     volunteer.id === volunteerId ? { ...volunteer, status: busy ? 'busy' : 'online', profile: { ...volunteer.profile, busy } } : volunteer,
   );
 }
+
