@@ -862,15 +862,22 @@ export function HomePage() {
             {blockedChat ? <div className="warning">{text.blockedChat}</div> : null}
           </aside>
         ) : null}
-        <div className="chat-list">
-          {messages.map((item) => (
-            <div key={item.id} className={item.senderId === myChatId ? 'message message--mine' : 'message'}>
-              {item.messageType === 'photo' && item.fileUrl ? <img className="message-media" src={item.fileUrl} alt={item.fileName ?? text.photo} /> : null}
-              {item.messageType === 'video' && item.fileUrl ? <video className="message-media" src={item.fileUrl} controls /> : null}
-              {item.messageType === 'voice' && item.fileUrl ? <audio className="voice-message" src={item.fileUrl} controls /> : null}
-              <p>{item.text}</p>
-            </div>
-          ))}
+        <div className={`chat-content${showSafetyTools ? ' chat-content--with-alerts' : ''}`}>
+          <div className="chat-list">
+            {messages.map((item) => (
+              <div key={item.id} className={item.senderId === myChatId ? 'message message--mine' : 'message'}>
+                {item.messageType === 'photo' && item.fileUrl ? <img className="message-media" src={item.fileUrl} alt={item.fileName ?? text.photo} /> : null}
+                {item.messageType === 'video' && item.fileUrl ? <video className="message-media" src={item.fileUrl} controls /> : null}
+                {item.messageType === 'voice' && item.fileUrl ? <audio className="voice-message" src={item.fileUrl} controls /> : null}
+                <p>{item.text}</p>
+              </div>
+            ))}
+          </div>
+          <aside className="chat-ad-card" aria-label="Рекламное место">
+            <img src="/komek-support.png" alt="" aria-hidden="true" />
+            <strong>Здесь могла быть ваша реклама</strong>
+            <p>Партнёрские объявления будут показываться аккуратно и не мешать помощи.</p>
+          </aside>
         </div>
         {voicePrompt ? <div className="voice-status">Говорите. Мы вас слушаем.</div> : null}
         {isAiChat && isAiSpeaking ? (
