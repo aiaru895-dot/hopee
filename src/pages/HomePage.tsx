@@ -18,6 +18,7 @@ import {
   resetMockBackend,
 } from '../lib/ryadomServices';
 import { createMyProfile, loadMyProfile, loadVolunteerStats, updateMyProfileName, type ProfileRow, type VolunteerProfileRow } from '../lib/ryadomProfile';
+import { saveHelpRequest, saveSafetyReport } from '../lib/ryadomPersistence';
 import { supabase } from '../lib/supabase';
 import type { Language } from '../lib/i18n';
 import { languageNames, uiText } from '../lib/i18n';
@@ -170,7 +171,9 @@ export function HomePage() {
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [isAiSpeechPaused, setIsAiSpeechPaused] = useState(false);
+  const [isAiThinking, setIsAiThinking] = useState(false);
   const [voiceError, setVoiceError] = useState('');
+  const [persistenceNotice, setPersistenceNotice] = useState('');
   const [aiSafety, setAiSafety] = useState<AiSafetyResult | null>(null);
   const [isCheckingSafety, setIsCheckingSafety] = useState(false);
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => (localStorage.getItem('hopee-theme') === 'dark' ? 'dark' : 'light'));
@@ -292,12 +295,32 @@ export function HomePage() {
     }
   };
 
+  const canSaveToSupabase = () => Boolean(profile && profile.auth_user_id !== 'guest');
+
+  const saveRequestIfPossible = async (help: HelpCategory) => {
+    if (!profile || !canSaveToSupabase()) return;
+    try {
+      await saveHelpRequest(profile.id, help);
+      setPersistenceNotice('');
+    } catch {
+      setPersistenceNotice('Не получилось сохранить обращение в Supabase. Мы продолжим работу на экране, попробуйте ещё раз позже.');
+    }
+  };
+
+  const persistReportIfPossible = (reason: ReportReason, comment: string) => {
+    if (!profile || !volunteer || !canSaveToSupabase() || volunteer.id === aiVolunteer.id) return;
+    void saveSafetyReport(helpSession, profile.id, volunteer.id, reason, comment).catch(() => {
+      setPersistenceNotice('Жалоба показана в приложении, но не сохранилась в Supabase. Попробуйте повторить позже.');
+    });
+  };
+
   const startSearch = (help: HelpCategory) => {
     window.clearTimeout(searchTimerRef.current);
     startSearchSound();
     setCategory(help);
     setStep('search');
     const request = createHelpRequest(profile?.id ?? 'guest-elder', help);
+    void saveRequestIfPossible(help);
 
     searchTimerRef.current = window.setTimeout(() => {
       const elderId = profile?.id ?? 'guest-elder';
@@ -370,6 +393,7 @@ export function HomePage() {
 
   const answerWithAi = async (conversation: ChatMessage[], userText: string) => {
     if (!helpSession || volunteer?.id !== aiVolunteer.id || !userText.trim()) return;
+    setIsAiThinking(true);
     const prompt = conversation
       .filter((item) => item.messageType !== 'system')
       .slice(-10)
@@ -394,6 +418,8 @@ export function HomePage() {
     } catch (error) {
       const reason = formatAiConnectionError(error instanceof Error ? error.message : 'неизвестная ошибка');
       setMessages([...conversation, createMessage(helpSession.id, aiVolunteer.id, 'text', reason)]);
+    } finally {
+      setIsAiThinking(false);
     }
   };
 
@@ -493,6 +519,7 @@ export function HomePage() {
 
     if (result.action === 'block' && volunteer) {
       createSafetyReport(helpSession, profile?.id ?? 'guest-elder', volunteer.id, 'password', result.reason);
+      persistReportIfPossible('password', result.reason);
       blockUser(profile?.id ?? 'guest-elder', volunteer.id);
       setBlockedChat(true);
       setHelpSession((current) => (current ? { ...current, status: 'reported', endedAt: new Date().toISOString() } : current));
@@ -610,6 +637,7 @@ export function HomePage() {
   const submitReport = (reason: ReportReason, comment = reportComment) => {
     if (!volunteer) return;
     createSafetyReport(helpSession, profile?.id ?? 'guest-elder', volunteer.id, reason, comment);
+    persistReportIfPossible(reason, comment);
     setReportComment('');
     setStep('safety');
   };
@@ -625,6 +653,7 @@ export function HomePage() {
   const stopUnsafeHelp = () => {
     if (!volunteer) return;
     createSafetyReport(helpSession, profile?.id ?? 'guest-elder', volunteer.id, 'bad_behavior', uiText[language].unsafe);
+    persistReportIfPossible('bad_behavior', uiText[language].unsafe);
     blockUser(profile?.id ?? 'guest-elder', volunteer.id);
     setBlockedChat(true);
     setHelpSession((current) => (current ? { ...current, status: 'reported', endedAt: new Date().toISOString() } : current));
@@ -791,6 +820,7 @@ export function HomePage() {
           <p className="eyebrow">{text.searchEyebrow}</p>
           <h1>Ищем помощника...</h1>
           <p>Ищем свободного проверенного помощника. Обычно это занимает немного времени.</p>
+          {persistenceNotice ? <div className="warning">{persistenceNotice}</div> : null}
           <div className="search-steps" aria-hidden="true">
             <span />
             <span />
@@ -879,6 +909,8 @@ export function HomePage() {
             <p>Партнёрские объявления будут показываться аккуратно и не мешать помощи.</p>
           </aside>
         </div>
+        {isAiChat && isAiThinking ? <div className="voice-status voice-status--thinking">KÖMEK AI печатает ответ...</div> : null}
+        {persistenceNotice ? <div className="warning">{persistenceNotice}</div> : null}
         {voicePrompt ? <div className="voice-status">Говорите. Мы вас слушаем.</div> : null}
         {isAiChat && isAiSpeaking ? (
           <div className="voice-status voice-status--ai">
@@ -889,7 +921,7 @@ export function HomePage() {
         {voiceError ? <div className="warning">{voiceError}</div> : null}
         <div className="chat-input">
           <input
-            disabled={blockedChat}
+            disabled={blockedChat || isAiThinking}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={(event) => {
@@ -900,8 +932,8 @@ export function HomePage() {
             }}
             placeholder={text.messagePlaceholder}
           />
-          <button className="voice-round-button" data-recording={isRecordingVoice ? 'true' : 'false'} disabled={blockedChat} onClick={toggleVoiceRecording}>{isRecordingVoice ? 'Стоп' : 'Голос'}</button>
-          <button disabled={blockedChat} onClick={sendText}>{text.send}</button>
+          <button className="voice-round-button" data-recording={isRecordingVoice ? 'true' : 'false'} disabled={blockedChat || isAiThinking} onClick={toggleVoiceRecording}>{isRecordingVoice ? 'Стоп' : 'Голос'}</button>
+          <button disabled={blockedChat || isAiThinking} onClick={sendText}>{isAiThinking ? 'Ждём' : text.send}</button>
         </div>
         {!isAiChat ? <div className="chat-tools">
           <button disabled={blockedChat} onClick={() => photoInputRef.current?.click()}>Прикрепить фото</button>

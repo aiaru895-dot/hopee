@@ -33,7 +33,7 @@ export function AuthPanel({ language, onGuest }: AuthPanelProps) {
     setBusy(true);
     setMessage('');
     const { error } = await signInWithGoogle();
-    if (error) setMessage(error.message);
+    if (error) setMessage(formatAuthError(error.message));
     setBusy(false);
   }
 
@@ -57,7 +57,7 @@ export function AuthPanel({ language, onGuest }: AuthPanelProps) {
           },
         });
         if (error) {
-          setMessage(error.message);
+          setMessage(formatAuthError(error.message));
           return;
         }
         if (data.session) return;
@@ -67,7 +67,7 @@ export function AuthPanel({ language, onGuest }: AuthPanelProps) {
       }
 
       const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) setMessage('Не получилось войти. Проверьте email, пароль и подтверждение почты.');
+      if (error) setMessage(formatAuthError(error.message));
     } finally {
       setBusy(false);
     }
@@ -97,8 +97,8 @@ export function AuthPanel({ language, onGuest }: AuthPanelProps) {
             <h2>{mode === 'signin' ? text.signIn : text.signUp}</h2>
           </div>
           <div className="auth-actions">
-            <ActionButton onClick={handleGoogle} disabled={busy}>{text.google}</ActionButton>
-            {onGuest ? <ActionButton tone="calm" onClick={onGuest}>{text.guest}</ActionButton> : null}
+            <ActionButton onClick={handleGoogle} disabled={busy}>{busy ? 'Загрузка...' : text.google}</ActionButton>
+            {onGuest ? <ActionButton tone="calm" onClick={onGuest} disabled={busy}>{text.guest}</ActionButton> : null}
           </div>
           <form className="form-card" onSubmit={handleEmail}>
             {mode === 'signup' ? (
@@ -109,7 +109,7 @@ export function AuthPanel({ language, onGuest }: AuthPanelProps) {
             ) : null}
             <input type="email" placeholder="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
             <input type="password" placeholder={text.password} value={password} onChange={(event) => setPassword(event.target.value)} minLength={6} required />
-            <button className="submit-button" disabled={busy}>{mode === 'signin' ? text.signIn : text.signUp}</button>
+            <button className="submit-button" disabled={busy}>{busy ? 'Загрузка...' : mode === 'signin' ? text.signIn : text.signUp}</button>
           </form>
           {message ? <p className="message">{message}</p> : null}
           <ActionButton tone="ghost" onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}>
@@ -119,5 +119,15 @@ export function AuthPanel({ language, onGuest }: AuthPanelProps) {
       </div>
     </PhoneShell>
   );
+}
+
+function formatAuthError(message: string) {
+  if (/invalid login credentials/i.test(message)) return 'Не получилось войти. Проверьте email и пароль.';
+  if (/email not confirmed/i.test(message)) return 'Почта ещё не подтверждена. Откройте письмо от Supabase и подтвердите email.';
+  if (/user already registered|already registered/i.test(message)) return 'Аккаунт с этим email уже есть. Нажмите “У меня уже есть аккаунт”.';
+  if (/password/i.test(message)) return 'Пароль должен быть не короче 6 символов.';
+  if (/rate limit|too many/i.test(message)) return 'Слишком много попыток. Подождите немного и попробуйте снова.';
+  if (/network|fetch/i.test(message)) return 'Нет соединения с сервером. Проверьте интернет и попробуйте ещё раз.';
+  return 'Что-то пошло не так. Попробуйте ещё раз.';
 }
 

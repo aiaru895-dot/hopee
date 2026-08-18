@@ -848,6 +848,22 @@ button, input { font: inherit; }
   font-weight: 850;
   cursor: pointer;
 }
+.voice-status--thinking {
+  background: #fff0f4;
+  color: var(--primary-dark);
+  position: relative;
+  overflow: hidden;
+}
+.voice-status--thinking::after {
+  content: '';
+  width: 54px;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: -60px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.72), transparent);
+  animation: loading-sweep 1.2s ease-in-out infinite;
+}
 .file-input { display: none; }
 .chat-input {
   display: grid;
@@ -1678,6 +1694,12 @@ input {
     opacity: 1;
     transform: translate(0, 0) scale(1);
     filter: blur(0);
+  }
+}
+
+@keyframes loading-sweep {
+  to {
+    left: calc(100% + 60px);
   }
 }
 
