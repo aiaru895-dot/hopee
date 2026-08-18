@@ -76,16 +76,16 @@ export function AuthPanel({ language, onGuest }: AuthPanelProps) {
   return (
     <PhoneShell screenKey="auth">
       <section className="app-intro" aria-hidden="true">
-        <img src="/app-icon.svg" alt="" />
+        <img src="/app-icon.png" alt="" />
         <strong>KÖMEK</strong>
       </section>
       <header className="desktop-app-header">
-        <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />KÖMEK</strong>
+        <strong><img className="brand-mark" src="/app-icon.png" alt="" aria-hidden="true" />KÖMEK</strong>
         <span>{text.service}</span>
       </header>
       <div className="auth-layout">
         <section className="login-hero">
-          <img className="brand-symbol brand-symbol--hero" src="/app-icon.svg" alt="" aria-hidden="true" />
+          <img className="brand-symbol brand-symbol--hero" src="/app-icon.png" alt="" aria-hidden="true" />
           <p className="eyebrow">{text.service}</p>
           <h1>KÖMEK</h1>
           <p className="brand-tagline">Generations helping generations.</p>
@@ -120,3 +120,4 @@ export function AuthPanel({ language, onGuest }: AuthPanelProps) {
     </PhoneShell>
   );
 }
+

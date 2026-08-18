@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+﻿import type { ReactNode } from 'react';
 import { uiText, type Language } from '../lib/i18n';
 
 type ActionButtonProps = {
@@ -26,7 +26,7 @@ export function PhoneShell({ children, screenKey = 'static', language = 'ru' }: 
 export function ScreenHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <header className="screen-header">
-      <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />KÖMEK</strong>
+      <strong><img className="brand-mark" src="/app-icon.png" alt="" aria-hidden="true" />KÖMEK</strong>
       <h1>{title}</h1>
       {subtitle ? <p>{subtitle}</p> : null}
     </header>
@@ -57,3 +57,4 @@ export function Avatar({ value }: { value: string }) {
 export function StatusPill({ children }: { children: ReactNode }) {
   return <span className="status-pill">{children}</span>;
 }
+

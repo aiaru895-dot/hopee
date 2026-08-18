@@ -169,6 +169,7 @@ export function HomePage() {
   const [voicePrompt, setVoicePrompt] = useState(false);
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
+  const [isAiSpeechPaused, setIsAiSpeechPaused] = useState(false);
   const [voiceError, setVoiceError] = useState('');
   const [aiSafety, setAiSafety] = useState<AiSafetyResult | null>(null);
   const [isCheckingSafety, setIsCheckingSafety] = useState(false);
@@ -339,16 +340,32 @@ export function HomePage() {
     const utterance = new SpeechSynthesisUtterance(answer);
     utterance.lang = language === 'kk' ? 'kk-KZ' : language === 'en' ? 'en-US' : 'ru-RU';
     utterance.rate = 0.92;
-    utterance.onstart = () => setIsAiSpeaking(true);
-    utterance.onend = () => setIsAiSpeaking(false);
-    utterance.onerror = () => setIsAiSpeaking(false);
+    utterance.onstart = () => {
+      setIsAiSpeaking(true);
+      setIsAiSpeechPaused(false);
+    };
+    utterance.onpause = () => setIsAiSpeechPaused(true);
+    utterance.onresume = () => setIsAiSpeechPaused(false);
+    utterance.onend = () => {
+      setIsAiSpeaking(false);
+      setIsAiSpeechPaused(false);
+    };
+    utterance.onerror = () => {
+      setIsAiSpeaking(false);
+      setIsAiSpeechPaused(false);
+    };
     window.speechSynthesis.speak(utterance);
   };
 
-  const stopAiSpeech = () => {
+  const toggleAiSpeechPause = () => {
     if (!('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
-    setIsAiSpeaking(false);
+    if (isAiSpeechPaused) {
+      window.speechSynthesis.resume();
+      setIsAiSpeechPaused(false);
+      return;
+    }
+    window.speechSynthesis.pause();
+    setIsAiSpeechPaused(true);
   };
 
   const answerWithAi = async (conversation: ChatMessage[], userText: string) => {
@@ -666,7 +683,7 @@ export function HomePage() {
     return (
       <PhoneShell screenKey={step} language={language}>
         <section className="welcome-screen">
-          <img className="brand-symbol brand-symbol--hero" src="/app-icon.svg" alt="" aria-hidden="true" />
+          <img className="brand-symbol brand-symbol--hero" src="/app-icon.png" alt="" aria-hidden="true" />
           <p className="eyebrow">KÖMEK</p>
           <h1>Помощь рядом</h1>
           <p>KÖMEK помогает пожилым людям быстро получить поддержку с телефоном, интернетом, приложениями и сообщениями.</p>
@@ -717,7 +734,7 @@ export function HomePage() {
     return (
       <PhoneShell screenKey={step} language={language}>
         <header className="top-bar">
-          <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />KÖMEK</strong>
+          <strong><img className="brand-mark" src="/app-icon.png" alt="" aria-hidden="true" />KÖMEK</strong>
           <button onClick={() => setStep('safety')}>{text.settings}</button>
         </header>
         <section className="home-panel elder-home-panel">
@@ -858,8 +875,8 @@ export function HomePage() {
         {voicePrompt ? <div className="voice-status">Говорите. Мы вас слушаем.</div> : null}
         {isAiChat && isAiSpeaking ? (
           <div className="voice-status voice-status--ai">
-            <span>KÖMEK AI говорит</span>
-            <button onClick={stopAiSpeech}>Стоп</button>
+            <span>{isAiSpeechPaused ? 'KÖMEK AI на паузе' : 'KÖMEK AI говорит'}</span>
+            <button onClick={toggleAiSpeechPause}>{isAiSpeechPaused ? 'Продолжить' : 'Стоп'}</button>
           </div>
         ) : null}
         {voiceError ? <div className="warning">{voiceError}</div> : null}
@@ -1017,7 +1034,7 @@ export function HomePage() {
       <PhoneShell screenKey={step} language={language}>
         <section className="volunteer-dashboard">
           <aside className="volunteer-sidebar">
-            <strong><img className="brand-mark" src="/app-icon.svg" alt="" aria-hidden="true" />KÖMEK</strong>
+            <strong><img className="brand-mark" src="/app-icon.png" alt="" aria-hidden="true" />KÖMEK</strong>
             <nav>
               <button className="active">Главная</button>
               <button onClick={() => setStep('incoming')}>Обращения</button>
@@ -1385,3 +1402,4 @@ function InfoScreen({
     </PhoneShell>
   );
 }
+
