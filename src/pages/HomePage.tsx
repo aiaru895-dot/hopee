@@ -54,6 +54,7 @@ type BrowserAudioWindow = Window & typeof globalThis & {
 };
 type SpeechRecognitionResultLike = {
   readonly 0: { transcript: string };
+  isFinal?: boolean;
 };
 type SpeechRecognitionEventLike = Event & {
   results: {
@@ -138,6 +139,8 @@ const komekAiSystemPrompt = `
 Не отвечай на темы вне KÖMEK и помощи пожилым: развлечения, споры, политика, учебные задания, программирование, личные советы не по поддержке, любые случайные вопросы.
 Если вопрос вне рамок, ответь коротко: "Я могу помочь только с поддержкой в KÖMEK: телефон, интернет, приложения, сообщения, безопасность или связь с волонтёром. Чем помочь?"
 Внутри рамок отвечай спокойно, коротко и пошагово.
+Отвечай как удобный чат: без markdown, без звездочек, без длинных списков, 2-5 коротких предложений.
+Если нужны шаги, давай максимум 3 шага за раз и в конце спрашивай, получилось ли.
 Никогда не проси пароли, SMS-коды, PIN или данные карт.
 Если проблема опасная, банковская или срочная, предложи позвать живого волонтёра или близкого человека.
 `;
@@ -165,6 +168,7 @@ export function HomePage() {
   const [blockedChat, setBlockedChat] = useState(false);
   const [voicePrompt, setVoicePrompt] = useState(false);
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [voiceError, setVoiceError] = useState('');
   const [aiSafety, setAiSafety] = useState<AiSafetyResult | null>(null);
   const [isCheckingSafety, setIsCheckingSafety] = useState(false);
@@ -335,7 +339,16 @@ export function HomePage() {
     const utterance = new SpeechSynthesisUtterance(answer);
     utterance.lang = language === 'kk' ? 'kk-KZ' : language === 'en' ? 'en-US' : 'ru-RU';
     utterance.rate = 0.92;
+    utterance.onstart = () => setIsAiSpeaking(true);
+    utterance.onend = () => setIsAiSpeaking(false);
+    utterance.onerror = () => setIsAiSpeaking(false);
     window.speechSynthesis.speak(utterance);
+  };
+
+  const stopAiSpeech = () => {
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    setIsAiSpeaking(false);
   };
 
   const answerWithAi = async (conversation: ChatMessage[], userText: string) => {
@@ -446,6 +459,7 @@ export function HomePage() {
   const sendText = async () => {
     if (!helpSession || !draft.trim() || blockedChat) return;
     const userText = draft.trim();
+    voiceTranscriptRef.current = '';
     const nextMessage = createMessage(helpSession.id, myChatId, 'text', userText);
     const nextMessages = [...messages, nextMessage];
     setMessages(nextMessages);
@@ -482,11 +496,12 @@ export function HomePage() {
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.onresult = (event) => {
-      const words: string[] = [];
-      for (let index = 0; index < event.results.length; index += 1) {
-        words.push(event.results[index][0].transcript);
+      let transcript = '';
+      for (let index = event.results.length - 1; index >= 0; index -= 1) {
+        const result = event.results[index];
+        transcript = result[0].transcript.trim();
+        if (transcript) break;
       }
-      const transcript = words.join(' ').trim();
       voiceTranscriptRef.current = transcript;
       setDraft(transcript);
     };
@@ -532,10 +547,11 @@ export function HomePage() {
             ...items,
             createMessage(helpSession.id, myChatId, 'voice', messageText, { url, name: 'voice-message.webm' }),
           ];
-          void answerWithAi(nextMessages, spokenText);
+          if (spokenText && volunteer?.id === aiVolunteer.id) void answerWithAi(nextMessages, spokenText);
           return nextMessages;
         });
-        if (spokenText) setDraft('');
+        voiceTranscriptRef.current = '';
+        setDraft('');
         setIsRecordingVoice(false);
         setVoicePrompt(false);
         stopVoiceTracks();
@@ -840,9 +856,26 @@ export function HomePage() {
           ))}
         </div>
         {voicePrompt ? <div className="voice-status">Говорите. Мы вас слушаем.</div> : null}
+        {isAiChat && isAiSpeaking ? (
+          <div className="voice-status voice-status--ai">
+            <span>KÖMEK AI говорит</span>
+            <button onClick={stopAiSpeech}>Стоп</button>
+          </div>
+        ) : null}
         {voiceError ? <div className="warning">{voiceError}</div> : null}
         <div className="chat-input">
-          <input disabled={blockedChat} value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={text.messagePlaceholder} />
+          <input
+            disabled={blockedChat}
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                void sendText();
+              }
+            }}
+            placeholder={text.messagePlaceholder}
+          />
           <button className="voice-round-button" data-recording={isRecordingVoice ? 'true' : 'false'} disabled={blockedChat} onClick={toggleVoiceRecording}>{isRecordingVoice ? 'Стоп' : 'Голос'}</button>
           <button disabled={blockedChat} onClick={sendText}>{text.send}</button>
         </div>

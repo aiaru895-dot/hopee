@@ -317,13 +317,20 @@ button, input { font: inherit; }
 .choice-help button,
 .more-safety-actions button {
   min-height: 56px;
-  border: 1px solid var(--line);
+  border: 2px solid #9f4560;
   border-radius: 12px;
-  background: var(--card);
-  color: var(--ink);
+  background: #b85c78;
+  color: #fff;
   padding: 0 14px;
   font-weight: 760;
   cursor: pointer;
+  box-shadow: 0 12px 24px rgba(184, 92, 120, 0.2);
+}
+.choice-help button:last-child,
+.secondary-actions button:nth-child(2n) {
+  background: #3e3a3d;
+  border-color: #3e3a3d;
+  box-shadow: 0 12px 24px rgba(39, 35, 38, 0.18);
 }
 .choice-help {
   border: 1px solid var(--line);
@@ -379,9 +386,9 @@ button, input { font: inherit; }
   color: #fff;
 }
 .action-button--ghost {
-  background: #fff;
-  color: var(--ink);
-  border: 1px solid var(--line);
+  background: #3e3a3d;
+  color: #fff;
+  border: 2px solid #3e3a3d;
 }
 .role-hero {
   min-height: 270px;
@@ -468,12 +475,13 @@ button, input { font: inherit; }
 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .tile-button {
   min-height: 94px;
-  background: #fff;
-  color: var(--ink);
-  border: 1px solid var(--line);
+  background: #b85c78;
+  color: #fff;
+  border: 2px solid #9f4560;
   display: grid;
   place-items: center;
   text-align: center;
+  box-shadow: 0 14px 28px rgba(184, 92, 120, 0.24);
 }
 .tile-button strong { font-size: 18px; line-height: 1.25; }
 
@@ -776,6 +784,24 @@ button, input { font: inherit; }
   color: var(--safe);
   font-size: 18px;
   font-weight: 800;
+}
+.voice-status--ai {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #fff0f4;
+  color: var(--primary-dark);
+}
+.voice-status--ai button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 22px;
+  background: #3e3a3d;
+  color: #fff;
+  font-weight: 850;
+  cursor: pointer;
 }
 .file-input { display: none; }
 .chat-input {
@@ -1821,7 +1847,6 @@ input {
     font-size: 15px;
   }
   .top-bar button,
-  .action-button--ghost,
   .secondary-actions button,
   .choice-help button,
   .chat-tools button,
@@ -1832,6 +1857,7 @@ input {
     color: var(--ink);
     box-shadow: 0 10px 24px rgba(39, 35, 38, 0.12);
   }
+  .action-button--ghost,
   .elder-home-panel .action-button--ghost {
     background: #2f2a2e;
     border-color: #2f2a2e;
