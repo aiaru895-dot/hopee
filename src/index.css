@@ -1768,6 +1768,10 @@ input {
   }
   .phone-shell--volunteerHome .screen-transition {
     gap: 10px;
+    padding-bottom: 96px;
+  }
+  .phone-shell--incoming .screen-transition {
+    padding-bottom: 96px;
   }
   .volunteer-dashboard {
     grid-template-columns: 1fr;
@@ -1798,9 +1802,11 @@ input {
   .bottom-nav {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    position: sticky;
-    bottom: 0;
-    z-index: 4;
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    z-index: 20;
     margin-top: 0;
     padding: 8px;
     border: 2px solid #d8c8cf;

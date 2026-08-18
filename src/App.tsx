@@ -6,7 +6,15 @@ import { NotFoundPage } from './pages/NotFoundPage';
 export default function App() {
   return (
     <Switch>
-      <Route path="/" component={HomePage} />
+      <Route path="/elder">
+        <HomePage routeRole="elder" />
+      </Route>
+      <Route path="/helper">
+        <HomePage routeRole="volunteer" />
+      </Route>
+      <Route path="/">
+        <HomePage />
+      </Route>
       <Route component={NotFoundPage} />
     </Switch>
   );

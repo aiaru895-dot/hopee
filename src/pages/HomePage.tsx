@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import { useLocation } from 'wouter';
 import { AuthPanel } from '../components/AuthPanel';
 import { ActionButton, PhoneShell, ScreenHeader, TileButton } from '../components/RyadomUi';
 import { VolunteerCard } from '../components/VolunteerCard';
@@ -147,7 +148,8 @@ const komekAiSystemPrompt = `
 `;
 
 
-export function HomePage() {
+export function HomePage({ routeRole }: { routeRole?: Role }) {
+  const [, navigate] = useLocation();
   const [session, setSession] = useState<Session | null>(null);
   const [guestMode, setGuestMode] = useState(false);
   const [welcomeSeen, setWelcomeSeen] = useState(() => localStorage.getItem('komek-welcome-seen') === 'yes');
@@ -196,6 +198,26 @@ export function HomePage() {
   const profileName = cleanDisplayName(profile?.name, profile?.role ?? role);
   const myChatId = profile?.id ?? (role === 'elder' ? 'guest-elder' : 'guest-volunteer');
 
+  const setGuestRole = (nextRole: Role) => {
+    const guestId = `guest-${nextRole}`;
+    setRole(nextRole);
+    setGuestMode(true);
+    setProfile({
+      id: guestId,
+      auth_user_id: 'guest',
+      role: nextRole,
+      name: nextRole === 'elder' ? uiText[language].needHelp : uiText[language].wantHelp,
+      age: null,
+      city: null,
+      avatar_url: null,
+    });
+    setVolunteerStats(nextRole === 'volunteer' ? guestStats : null);
+    setHelpSession(undefined);
+    setMessages([]);
+    setStep(nextRole === 'elder' ? 'elderHome' : 'volunteerHome');
+    localStorage.setItem('komek-guest-role', nextRole);
+  };
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => setSession(nextSession));
@@ -203,7 +225,13 @@ export function HomePage() {
   }, []);
 
   useEffect(() => {
+    if (!routeRole || session) return;
+    setGuestRole(routeRole);
+  }, [routeRole, session, language]);
+
+  useEffect(() => {
     if (!session) {
+      if (routeRole) return;
       if (!guestMode) {
         setProfile(null);
         setStep(welcomeSeen ? 'role' : 'welcome');
@@ -224,6 +252,7 @@ export function HomePage() {
         if (cleanName !== savedProfile.name) void updateMyProfileName(savedProfile.id, cleanName);
         setRole(savedProfile.role);
         setStep(savedProfile.role === 'elder' ? 'elderHome' : 'volunteerHome');
+        navigate(savedProfile.role === 'elder' ? '/elder' : '/helper', { replace: true });
         if (savedProfile.role === 'volunteer') setVolunteerStats(await loadVolunteerStats(savedProfile.id));
       })
       .catch((error: Error) => {
@@ -263,20 +292,8 @@ export function HomePage() {
     setFirstActionPraise(nextRole === 'elder' ? 'Отлично. Теперь можно сразу попросить помощь.' : 'Отлично. Вы готовы принять первую просьбу о помощи.');
     if (guestMode) {
       playOpenSound();
-      const guestId = `guest-${nextRole}`;
-      setProfile({
-        id: guestId,
-        auth_user_id: 'guest',
-        role: nextRole,
-        name: nextRole === 'elder' ? uiText[language].needHelp : uiText[language].wantHelp,
-        age: null,
-        city: null,
-        avatar_url: null,
-      });
-      setVolunteerStats(nextRole === 'volunteer' ? guestStats : null);
-      setHelpSession(undefined);
-      setMessages([]);
-      setStep(nextRole === 'elder' ? 'elderHome' : 'volunteerHome');
+      setGuestRole(nextRole);
+      navigate(nextRole === 'elder' ? '/elder' : '/helper');
       return;
     }
     if (!session) return;
@@ -290,6 +307,7 @@ export function HomePage() {
       setProfile(savedProfile);
       if (nextRole === 'volunteer') setVolunteerStats(await loadVolunteerStats(savedProfile.id));
       setStep(nextRole === 'elder' ? 'elderHome' : 'volunteerHome');
+      navigate(nextRole === 'elder' ? '/elder' : '/helper');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : uiText[language].retry);
     }
@@ -668,6 +686,12 @@ export function HomePage() {
 
   const enterAsGuest = () => {
     playOpenSound();
+    const savedGuestRole = localStorage.getItem('komek-guest-role');
+    if (savedGuestRole === 'elder' || savedGuestRole === 'volunteer') {
+      setGuestRole(savedGuestRole);
+      navigate(savedGuestRole === 'elder' ? '/elder' : '/helper');
+      return;
+    }
     setGuestMode(true);
     setProfile(null);
     setVolunteerStats(null);
@@ -679,32 +703,37 @@ export function HomePage() {
 
   const registerFromGuest = () => {
     playCloseSound();
+    localStorage.removeItem('komek-guest-role');
     setGuestMode(false);
     setProfile(null);
     setVolunteerStats(null);
     setHelpSession(undefined);
     setMessages([]);
     setStep('welcome');
+    navigate('/');
   };
 
   const finishWelcome = () => {
     localStorage.setItem('komek-welcome-seen', 'yes');
     setWelcomeSeen(true);
     setStep('role');
+    navigate('/');
   };
 
   const signOutApp = async () => {
     playCloseSound();
     setGuestMode(false);
+    localStorage.removeItem('komek-guest-role');
     setProfile(null);
     setVolunteerStats(null);
     setHelpSession(undefined);
     setMessages([]);
     setStep('welcome');
+    navigate('/');
     await supabase.auth.signOut();
   };
 
-  if (!session && !guestMode && welcomeSeen && step !== 'welcome') return <AuthPanel language={language} onGuest={enterAsGuest} />;
+  if (!session && !guestMode && !routeRole && welcomeSeen && step !== 'welcome') return <AuthPanel language={language} onGuest={enterAsGuest} />;
 
   if (step === 'loading') return <LoadingScreen title={text.searchEyebrow} />;
 
@@ -1441,4 +1470,5 @@ function InfoScreen({
     </PhoneShell>
   );
 }
+
 
