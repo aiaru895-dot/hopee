@@ -13,9 +13,11 @@ const mojibakeParts = [
 ].map((codes) => String.fromCharCode(...codes));
 
 export function cleanDisplayName(value: string | null | undefined, role: Role | null | undefined): string {
-  const fallback = role === 'volunteer' ? 'Помощник' : 'Пользователь';
+  const fallback = role === 'volunteer' ? 'Я хочу помочь' : 'Мне нужна помощь';
   const text = value?.trim();
   if (!text || looksBroken(text)) return fallback;
+  if (role === 'volunteer' && /мне нужна помощь/i.test(text)) return fallback;
+  if (role === 'elder' && /я хочу помог/i.test(text)) return fallback;
   return text;
 }
 

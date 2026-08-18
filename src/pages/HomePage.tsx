@@ -615,6 +615,16 @@ export function HomePage() {
     setStep('role');
   };
 
+  const registerFromGuest = () => {
+    playCloseSound();
+    setGuestMode(false);
+    setProfile(null);
+    setVolunteerStats(null);
+    setHelpSession(undefined);
+    setMessages([]);
+    setStep('welcome');
+  };
+
   const finishWelcome = () => {
     localStorage.setItem('komek-welcome-seen', 'yes');
     setWelcomeSeen(true);
@@ -668,7 +678,7 @@ export function HomePage() {
           <ActionButton onClick={() => chooseRole('elder')}>{text.needHelp}</ActionButton>
           <ActionButton tone="calm" onClick={() => chooseRole('volunteer')}>{text.wantHelp}</ActionButton>
         </div>
-        <ActionButton tone="ghost" onClick={signOutApp}>{text.exit}</ActionButton>
+        <ActionButton tone="ghost" onClick={guestMode ? registerFromGuest : signOutApp}>{guestMode ? 'Зарегистрироваться' : text.exit}</ActionButton>
       </PhoneShell>
     );
   }
@@ -704,8 +714,11 @@ export function HomePage() {
           <p className="help-undertext">Мы найдём человека, который вам поможет.</p>
         </section>
         <section className="trust-note calm-panel">
-          <strong>Важное правило</strong>
-          <p>Никому не сообщайте пароль, код из SMS, PIN-код и данные банковской карты.</p>
+          <img className="elder-trust-image" src="/komek-support.png" alt="Волонтёр помогает пожилому человеку с телефоном" />
+          <div className="trust-note__text">
+            <strong>Важное правило</strong>
+            <p>Никому не сообщайте пароль, код из SMS, PIN-код и данные банковской карты.</p>
+          </div>
         </section>
         <div className="secondary-actions">
           <button onClick={() => setStep('history')}>{text.history}</button>
@@ -1010,6 +1023,7 @@ export function HomePage() {
             </section>
           </main>
           <aside className="volunteer-profile-panel">
+            <img className="volunteer-panel-image" src="/komek-support.png" alt="" aria-hidden="true" />
             <p className="eyebrow">Репутация</p>
             <h2>{profileName}</h2>
             <p>Проверенный помощник</p>
@@ -1023,6 +1037,7 @@ export function HomePage() {
         </section>
         <BottomNav
           items={['Главная', 'Обращения', 'Чаты', 'Профиль']}
+          activeIndex={0}
           onFirst={() => setStep('volunteerHome')}
           onSecond={() => setStep('incoming')}
           onThird={() => setStep('history')}
@@ -1035,12 +1050,20 @@ export function HomePage() {
   if (step === 'incoming') {
     return (
       <PhoneShell screenKey={step} language={language}>
-        <ScreenHeader title="Пока нет реальных запросов" subtitle="Когда пожилой пользователь отправит настоящую просьбу, она появится здесь." />
+        <ScreenHeader title="Нет запросов" subtitle="Когда появится новое обращение, оно будет здесь." />
         <div className="info-list">
-          <p>Фейковые просьбы отключены.</p>
-          <p>Сейчас можно ждать настоящие обращения.</p>
+          <p>Сейчас новых обращений нет.</p>
+          <p>Вы онлайн и готовы помогать.</p>
         </div>
         <ActionButton tone="ghost" onClick={() => setStep('volunteerHome')}>{text.notNow}</ActionButton>
+        <BottomNav
+          items={['Главная', 'Обращения', 'Чаты', 'Профиль']}
+          activeIndex={1}
+          onFirst={() => setStep('volunteerHome')}
+          onSecond={() => setStep('incoming')}
+          onThird={() => setStep('history')}
+          onFourth={() => setStep('admin')}
+        />
       </PhoneShell>
     );
   }
@@ -1060,7 +1083,8 @@ export function HomePage() {
         onFontChange={setFontMode}
         onSoundChange={setSoundEnabled}
         onLanguageChange={setLanguage}
-        onSignOut={signOutApp}
+        onSignOut={guestMode ? registerFromGuest : signOutApp}
+        signOutLabel={guestMode ? 'Зарегистрироваться' : uiText[language].signOut}
         onBack={() => setStep(role === 'elder' ? 'elderHome' : 'volunteerHome')}
       />
     );
@@ -1117,12 +1141,14 @@ function RoleChoiceHero() {
 
 function BottomNav({
   items,
+  activeIndex,
   onFirst,
   onSecond,
   onThird,
   onFourth,
 }: {
   items: string[];
+  activeIndex: number;
   onFirst: () => void;
   onSecond: () => void;
   onThird: () => void;
@@ -1134,7 +1160,11 @@ function BottomNav({
       {items.map((item, index) => {
         const actions = [onFirst, onSecond, onThird, onFourth];
         return (
-          <button key={item} className={`bottom-nav__item bottom-nav__item--${icons[index]}`} onClick={actions[index]}>
+          <button
+            key={item}
+            className={`bottom-nav__item bottom-nav__item--${icons[index]}${index === activeIndex ? ' active' : ''}`}
+            onClick={actions[index]}
+          >
             <span aria-hidden="true" />
             <b>{item}</b>
           </button>
@@ -1241,6 +1271,7 @@ function InfoScreen({
   onSoundChange,
   onLanguageChange,
   onSignOut,
+  signOutLabel,
   onBack,
 }: {
   step: Step;
@@ -1256,6 +1287,7 @@ function InfoScreen({
   onSoundChange: (enabled: boolean) => void;
   onLanguageChange: (language: Language) => void;
   onSignOut: () => void;
+  signOutLabel: string;
   onBack: () => void;
 }) {
   const title = step === 'admin' ? uiText[language].profile : step === 'volunteerProfile' ? uiText[language].progress : uiText[language].settings;
@@ -1316,7 +1348,7 @@ function InfoScreen({
         }) : null}
       </div>
       <ActionButton onClick={onBack}>{uiText[language].back}</ActionButton>
-      <ActionButton tone="ghost" onClick={onSignOut}>{uiText[language].signOut}</ActionButton>
+      <ActionButton tone="ghost" onClick={onSignOut}>{signOutLabel}</ActionButton>
     </PhoneShell>
   );
 }
