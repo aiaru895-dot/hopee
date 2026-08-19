@@ -23,7 +23,7 @@ export function AuthPanel({ language, onGuest }: AuthPanelProps) {
 
   if (!isSupabaseConfigured) {
     return (
-      <PhoneShell screenKey="setup">
+      <PhoneShell screenKey="setup" language={language}>
         <SupabaseSetupMessage />
       </PhoneShell>
     );
@@ -74,7 +74,7 @@ export function AuthPanel({ language, onGuest }: AuthPanelProps) {
   }
 
   return (
-    <PhoneShell screenKey="auth">
+    <PhoneShell screenKey="auth" language={language}>
       <section className="app-intro" aria-hidden="true">
         <img src="/app-icon.png" alt="" />
         <strong>KÖMEK</strong>

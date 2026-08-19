@@ -135,28 +135,99 @@ const komekAiSystemPrompt = `
 Если проблема опасная, банковская или срочная, предложи позвать живого волонтёра или близкого человека.
 `;
 
+type SavedAppState = {
+  step: Step;
+  role: Role;
+  category: HelpCategory;
+  helpSession?: HelpSession;
+  volunteer?: Volunteer;
+  messages: ChatMessage[];
+  draft: string;
+  blockedChat: boolean;
+};
+
+const savedStateKey = 'komek-app-state';
+const restorableSteps: Step[] = [
+  'role',
+  'elderHome',
+  'category',
+  'noVolunteer',
+  'found',
+  'chat',
+  'report',
+  'unsafe',
+  'blocked',
+  'safetyGuide',
+  'history',
+  'rating',
+  'safety',
+  'volunteerHome',
+  'incoming',
+  'volunteerProfile',
+  'admin',
+];
+
+function isRestorableStep(value: unknown): value is Step {
+  return typeof value === 'string' && restorableSteps.includes(value as Step);
+}
+
+function loadSavedAppState(): SavedAppState | null {
+  try {
+    const raw = localStorage.getItem(savedStateKey);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<SavedAppState>;
+    if (!isRestorableStep(parsed.step)) return null;
+    if (parsed.role !== 'elder' && parsed.role !== 'volunteer') return null;
+    if (typeof parsed.category !== 'string') return null;
+    return {
+      step: parsed.step,
+      role: parsed.role,
+      category: parsed.category as HelpCategory,
+      helpSession: parsed.helpSession,
+      volunteer: parsed.volunteer,
+      messages: Array.isArray(parsed.messages) ? parsed.messages : [],
+      draft: typeof parsed.draft === 'string' ? parsed.draft : '',
+      blockedChat: Boolean(parsed.blockedChat),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function getSafeRestoredStep(saved: SavedAppState, fallback: Step) {
+  const needsChatState: Step[] = ['found', 'chat', 'report', 'unsafe', 'blocked', 'rating'];
+  if (needsChatState.includes(saved.step) && (!saved.helpSession || !saved.volunteer)) return fallback;
+  if ((saved.step === 'incoming' || saved.step === 'volunteerProfile') && saved.role !== 'volunteer') return fallback;
+  return saved.step;
+}
+
+function routeForRole(nextRole: Role) {
+  return nextRole === 'elder' ? '/elder' : '/helper';
+}
+
 
 export function HomePage({ routeRole }: { routeRole?: Role }) {
   const [, navigate] = useLocation();
+  const savedAppState = useMemo(() => loadSavedAppState(), []);
   const [session, setSession] = useState<Session | null>(null);
   const [guestMode, setGuestMode] = useState(false);
   const [welcomeSeen, setWelcomeSeen] = useState(() => localStorage.getItem('komek-welcome-seen') === 'yes');
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [volunteerStats, setVolunteerStats] = useState<VolunteerProfileRow | null>(null);
   const [step, setStep] = useState<Step>('loading');
-  const [role, setRole] = useState<Role>('elder');
-  const [volunteer, setVolunteer] = useState<Volunteer>();
-  const [category, setCategory] = useState<HelpCategory>('any');
-  const [helpSession, setHelpSession] = useState<HelpSession>();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [draft, setDraft] = useState('');
+  const [role, setRole] = useState<Role>(savedAppState?.role ?? 'elder');
+  const [volunteer, setVolunteer] = useState<Volunteer | undefined>(savedAppState?.volunteer);
+  const [category, setCategory] = useState<HelpCategory>(savedAppState?.category ?? 'any');
+  const [helpSession, setHelpSession] = useState<HelpSession | undefined>(savedAppState?.helpSession);
+  const [messages, setMessages] = useState<ChatMessage[]>(savedAppState?.messages ?? []);
+  const [draft, setDraft] = useState(savedAppState?.draft ?? '');
   const [rating, setRating] = useState(0);
   const [message, setMessage] = useState('');
   const [firstActionPraise, setFirstActionPraise] = useState('');
   const [databaseError, setDatabaseError] = useState('');
   const [reportReason, setReportReason] = useState<ReportReason>('trolling');
   const [reportComment, setReportComment] = useState('');
-  const [blockedChat, setBlockedChat] = useState(false);
+  const [blockedChat, setBlockedChat] = useState(savedAppState?.blockedChat ?? false);
   const [voicePrompt, setVoicePrompt] = useState(false);
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
@@ -191,6 +262,17 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => setSession(nextSession));
     return () => data.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const handleLanguageChange = (event: Event) => {
+      const nextLanguage = (event as CustomEvent<Language>).detail;
+      if (nextLanguage === 'ru' || nextLanguage === 'kk' || nextLanguage === 'en') {
+        setLanguage(nextLanguage);
+      }
+    };
+    window.addEventListener('komek-language-change', handleLanguageChange);
+    return () => window.removeEventListener('komek-language-change', handleLanguageChange);
   }, []);
 
   useEffect(() => {
@@ -233,8 +315,10 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
         setProfile(cleanProfile);
         if (cleanName !== savedProfile.name) void updateMyProfileName(savedProfile.id, cleanName);
         setRole(savedProfile.role);
-        setStep(savedProfile.role === 'elder' ? 'elderHome' : 'volunteerHome');
-        navigate(savedProfile.role === 'elder' ? '/elder' : '/helper', { replace: true });
+        const homeStep = savedProfile.role === 'elder' ? 'elderHome' : 'volunteerHome';
+        const restoredStep = savedAppState?.role === savedProfile.role ? getSafeRestoredStep(savedAppState, homeStep) : homeStep;
+        setStep(restoredStep);
+        navigate(routeForRole(savedProfile.role), { replace: true });
         if (savedProfile.role === 'volunteer') {
           await setMyVolunteerOnline(savedProfile.id, true);
           setVolunteerStats(await loadVolunteerStats(savedProfile.id));
@@ -276,6 +360,22 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
     localStorage.setItem('komek-language', language);
   }, [language]);
 
+  useEffect(() => {
+    if (step === 'loading' || step === 'databaseSetup') return;
+    if (!isRestorableStep(step)) return;
+    const stateToSave: SavedAppState = {
+      step,
+      role,
+      category,
+      helpSession,
+      volunteer,
+      messages,
+      draft,
+      blockedChat,
+    };
+    localStorage.setItem(savedStateKey, JSON.stringify(stateToSave));
+  }, [step, role, category, helpSession, volunteer, messages, draft, blockedChat]);
+
   const chooseRole = async (nextRole: Role) => {
     setRole(nextRole);
     setFirstActionPraise(nextRole === 'elder' ? 'Отлично. Теперь можно сразу попросить помощь.' : 'Отлично. Вы готовы принять первую просьбу о помощи.');
@@ -297,7 +397,7 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
         setVolunteerStats(await loadVolunteerStats(savedProfile.id));
       }
       setStep(nextRole === 'elder' ? 'elderHome' : 'volunteerHome');
-      navigate(nextRole === 'elder' ? '/elder' : '/helper');
+      navigate(routeForRole(nextRole));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : uiText[language].retry);
     }
@@ -715,6 +815,7 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
   const registerFromGuest = () => {
     playCloseSound();
     localStorage.removeItem('komek-guest-role');
+    localStorage.removeItem(savedStateKey);
     setGuestMode(false);
     setProfile(null);
     setVolunteerStats(null);
@@ -735,6 +836,7 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
     playCloseSound();
     setGuestMode(false);
     localStorage.removeItem('komek-guest-role');
+    localStorage.removeItem(savedStateKey);
     setProfile(null);
     setVolunteerStats(null);
     setHelpSession(undefined);
@@ -746,7 +848,7 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
 
   if (!session && !guestMode && !routeRole && welcomeSeen && step !== 'welcome') return <AuthPanel language={language} onGuest={enterAsGuest} />;
 
-  if (step === 'loading') return <LoadingScreen title={text.searchEyebrow} />;
+  if (step === 'loading') return <LoadingScreen title={text.searchEyebrow} language={language} />;
 
   if (step === 'welcome') {
     return (
@@ -1224,9 +1326,9 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
   return null;
 }
 
-function LoadingScreen({ title }: { title: string }) {
+function LoadingScreen({ title, language }: { title: string; language: Language }) {
   return (
-    <PhoneShell screenKey="loading" language="ru">
+    <PhoneShell screenKey="loading" language={language}>
       <section className="center-screen">
         <div className="search-indicator" aria-hidden="true"><span /></div>
         <h1>{title}</h1>
@@ -1457,20 +1559,35 @@ function InfoScreen({
         {step === 'safety' ? (
           <div className="settings-group">
             <strong>{uiText[language].gameSounds}</strong>
-            <label className="volume-control">
-              <span>{soundEnabled ? `${soundVolume}%` : uiText[language].soundOff}</span>
+            <div className="volume-control">
+              <div className="volume-control__top">
+                <button onClick={() => {
+                  const nextVolume = Math.max(0, soundVolume - 10);
+                  onSoundVolumeChange(nextVolume);
+                  onSoundChange(nextVolume > 0);
+                }}>−</button>
+                <span>{soundEnabled ? `${soundVolume}%` : uiText[language].soundOff}</span>
+                <button onClick={() => {
+                  const nextVolume = Math.min(100, soundVolume + 10);
+                  onSoundVolumeChange(nextVolume);
+                  onSoundChange(nextVolume > 0);
+                }}>+</button>
+              </div>
               <input
                 type="range"
                 min="0"
                 max="100"
                 value={soundEnabled ? soundVolume : 0}
+                style={{
+                  background: `linear-gradient(90deg, var(--primary) 0%, var(--primary) ${soundEnabled ? soundVolume : 0}%, var(--line) ${soundEnabled ? soundVolume : 0}%, var(--line) 100%)`,
+                }}
                 onChange={(event) => {
                   const nextVolume = Number(event.target.value);
                   onSoundVolumeChange(nextVolume);
                   onSoundChange(nextVolume > 0);
                 }}
               />
-            </label>
+            </div>
           </div>
         ) : null}
         {step === 'safety' ? (

@@ -60,13 +60,13 @@ export async function createMyProfile(role: Role, name: string) {
 
   const { data, error } = await supabase
     .from('profiles')
-    .insert({
+    .upsert({
       auth_user_id: authUser.id,
       role,
       name: cleanDisplayName(name, role),
       age: role === 'elder' ? 72 : 24,
       city: 'Алматы',
-    })
+    }, { onConflict: 'auth_user_id' })
     .select('*')
     .single();
   if (error) throw error;
@@ -76,7 +76,7 @@ export async function createMyProfile(role: Role, name: string) {
 }
 
 export async function createVolunteerProfile(profileId: string) {
-  const { error } = await supabase.from('volunteer_profiles').insert({
+  const { error } = await supabase.from('volunteer_profiles').upsert({
     user_id: profileId,
     verified: false,
     verification_status: 'new',
@@ -86,7 +86,7 @@ export async function createVolunteerProfile(profileId: string) {
     xp: 0,
     level: 1,
     title: 'Новый помощник',
-  });
+  }, { onConflict: 'user_id', ignoreDuplicates: true });
   if (error) throw error;
 }
 

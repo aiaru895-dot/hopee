@@ -8,10 +8,27 @@ type ActionButtonProps = {
   disabled?: boolean;
 };
 
+const languageLabels: Record<Language, string> = {
+  ru: 'RU',
+  kk: 'ҚAZ',
+  en: 'EN',
+};
+
+function changeLanguage(language: Language) {
+  window.dispatchEvent(new CustomEvent<Language>('komek-language-change', { detail: language }));
+}
+
 export function PhoneShell({ children, screenKey = 'static', language = 'ru' }: { children: ReactNode; screenKey?: string; language?: Language }) {
   return (
     <main className="app-shell">
       <section className={`phone-shell phone-shell--${screenKey}`}>
+        <div className="quick-language" role="group" aria-label={uiText[language].language}>
+          {(['ru', 'kk', 'en'] as const).map((item) => (
+            <button key={item} className={language === item ? 'active' : ''} onClick={() => changeLanguage(item)}>
+              {languageLabels[item]}
+            </button>
+          ))}
+        </div>
         <div key={screenKey} className="screen-transition">
           {children}
         </div>
