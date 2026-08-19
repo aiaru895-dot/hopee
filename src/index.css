@@ -76,6 +76,8 @@ button, input { font: inherit; }
   flex: 1;
   flex-direction: column;
   gap: 18px;
+}
+.screen-transition--intro {
   animation: screen-enter 0.58s cubic-bezier(0.16, 1, 0.3, 1) both;
   will-change: opacity, transform, filter;
 }
@@ -2108,7 +2110,7 @@ input {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .screen-transition,
+  .screen-transition--intro,
   .role-person,
   .role-heart,
   .role-hero__ground,

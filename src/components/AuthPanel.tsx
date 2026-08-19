@@ -6,12 +6,7 @@ import { uiText } from '../lib/i18n';
 import { ActionButton, PhoneShell } from './RyadomUi';
 import { SupabaseSetupMessage } from './SupabaseSetupMessage';
 
-type AuthPanelProps = {
-  language: Language;
-  onGuest?: () => void;
-};
-
-export function AuthPanel({ language, onGuest }: AuthPanelProps) {
+export function AuthPanel({ language }: { language: Language }) {
   const text = uiText[language];
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -98,7 +93,6 @@ export function AuthPanel({ language, onGuest }: AuthPanelProps) {
           </div>
           <div className="auth-actions">
             <ActionButton onClick={handleGoogle} disabled={busy}>{busy ? 'Загрузка...' : text.google}</ActionButton>
-            {onGuest ? <ActionButton tone="calm" onClick={onGuest} disabled={busy}>{text.guest}</ActionButton> : null}
           </div>
           <form className="form-card" onSubmit={handleEmail}>
             {mode === 'signup' ? (

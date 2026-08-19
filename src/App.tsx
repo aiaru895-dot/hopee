@@ -6,13 +6,7 @@ import { NotFoundPage } from './pages/NotFoundPage';
 export default function App() {
   return (
     <Switch>
-      <Route path="/elder/*?">
-        <HomePage routeRole="elder" />
-      </Route>
-      <Route path="/helper/*?">
-        <HomePage routeRole="volunteer" />
-      </Route>
-      <Route path="/">
+      <Route path={/^\/(?:elder(?:\/.*)?|helper(?:\/.*)?)?\/?$/}>
         <HomePage />
       </Route>
       <Route component={NotFoundPage} />

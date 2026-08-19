@@ -20,7 +20,7 @@ import {
   hasSafetyRisk,
   resetMockBackend,
 } from '../lib/ryadomServices';
-import { createMyProfile, loadMyProfile, loadVolunteerStats, signInAsAnonymousGuest, updateMyProfileName, type ProfileRow, type VolunteerProfileRow } from '../lib/ryadomProfile';
+import { createMyProfile, loadMyProfile, loadVolunteerStats, updateMyProfileName, type ProfileRow, type VolunteerProfileRow } from '../lib/ryadomProfile';
 import { createSupabaseHelpSession, findOnlineVolunteer, saveHelpRequest, saveSafetyReport, setMyVolunteerOnline } from '../lib/ryadomPersistence';
 import { supabase } from '../lib/supabase';
 import type { Language } from '../lib/i18n';
@@ -30,7 +30,6 @@ import type { Achievement, ChatMessage, HelpCategory, HelpSession, ReportReason,
 
 type Step =
   | 'loading'
-  | 'welcome'
   | 'role'
   | 'databaseSetup'
   | 'elderHome'
@@ -182,6 +181,11 @@ function isRestorableStep(value: unknown): value is Step {
 
 function loadSavedAppState(): SavedAppState | null {
   try {
+    if (localStorage.getItem('komek-guest-role')) {
+      localStorage.removeItem('komek-guest-role');
+      localStorage.removeItem(savedStateKey);
+      return null;
+    }
     const raw = localStorage.getItem(savedStateKey);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<SavedAppState>;
@@ -214,6 +218,12 @@ function routeForRole(nextRole: Role) {
   return nextRole === 'elder' ? '/elder' : '/helper';
 }
 
+function roleForRoute(path: string): Role | undefined {
+  if (path === '/elder' || path.startsWith('/elder/')) return 'elder';
+  if (path === '/helper' || path.startsWith('/helper/')) return 'volunteer';
+  return undefined;
+}
+
 function stepForTabRoute(path: string, routeRole: Role): Step | null {
   const normalizedPath = path.length > 1 ? path.replace(/\/+$/, '') : path;
   const routes: Record<string, Step> = routeRole === 'elder'
@@ -242,17 +252,12 @@ function buildAiChatState(elderId: string, category: HelpCategory) {
   };
 }
 
-function isAnonymousSession(currentSession: Session | null) {
-  return currentSession?.user.is_anonymous === true;
-}
-
-
-export function HomePage({ routeRole }: { routeRole?: Role }) {
+export function HomePage() {
   const [location, navigate] = useLocation();
+  const routeRole = roleForRoute(location);
   const savedAppState = useMemo(() => loadSavedAppState(), []);
   const [session, setSession] = useState<Session | null>(null);
   const [authReady, setAuthReady] = useState(false);
-  const [guestMode, setGuestMode] = useState(() => localStorage.getItem('komek-guest-role') === 'elder' || localStorage.getItem('komek-guest-role') === 'volunteer');
   const [welcomeSeen, setWelcomeSeen] = useState(() => localStorage.getItem('komek-welcome-seen') === 'yes');
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [volunteerStats, setVolunteerStats] = useState<VolunteerProfileRow | null>(null);
@@ -298,44 +303,27 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
   const visibleAchievements = useMemo(() => achievements.slice(0, 3), []);
   const text = uiText[language];
   const profileName = cleanDisplayName(profile?.name, profile?.role ?? role);
-  const myChatId = profile?.id ?? (role === 'elder' ? 'guest-elder' : 'guest-volunteer');
+  const currentUserId = profile?.id ?? session?.user.id ?? 'signed-in-user';
+  const myChatId = currentUserId;
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setGuestMode(isAnonymousSession(data.session));
+    localStorage.removeItem('komek-guest-role');
+    void supabase.auth.getSession().then(async ({ data }) => {
+      if (data.session?.user.is_anonymous) {
+        localStorage.removeItem(savedStateKey);
+        await supabase.auth.signOut();
+        setSession(null);
+      } else {
+        setSession(data.session);
+      }
       setAuthReady(true);
     });
     const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
-      if (nextSession) setGuestMode(isAnonymousSession(nextSession));
+      setSession(nextSession?.user.is_anonymous ? null : nextSession);
       setAuthReady(true);
     });
     return () => data.subscription.unsubscribe();
   }, []);
-
-  useEffect(() => {
-    if (session && !isAnonymousSession(session) && guestMode) {
-      setGuestMode(false);
-      localStorage.removeItem('komek-guest-role');
-    }
-  }, [session, guestMode]);
-
-  useEffect(() => {
-    if (!authReady || session) return;
-    const savedGuestRole = localStorage.getItem('komek-guest-role');
-    if (savedGuestRole !== 'elder' && savedGuestRole !== 'volunteer') return;
-
-    setGuestMode(true);
-    void signInAsAnonymousGuest().then(({ error }) => {
-      if (error) {
-        localStorage.removeItem('komek-guest-role');
-        setGuestMode(false);
-        setMessage('Не получилось восстановить гостевой вход. Попробуйте войти как гость ещё раз.');
-        setStep(welcomeSeen ? 'role' : 'welcome');
-      }
-    });
-  }, [authReady, session, welcomeSeen]);
 
   useEffect(() => {
     const handleLanguageChange = (event: Event) => {
@@ -349,40 +337,19 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
   }, []);
 
   useEffect(() => {
-    if (!authReady) return;
-    if (routeRole && !session && !guestMode) {
-      setGuestMode(true);
-      void signInAsAnonymousGuest().then(({ error }) => {
-        if (error) {
-          setGuestMode(false);
-          setMessage('Не получилось войти как гость. Проверьте Anonymous Sign-In в Supabase Auth.');
-          navigate('/');
-          setStep('welcome');
-        }
-      });
+    if (!authReady || !session) {
+      setProfile(null);
       return;
     }
-    if (!routeRole || !session || profile) return;
-    setGuestMode(isAnonymousSession(session));
-    void chooseRole(routeRole);
-  }, [authReady, routeRole, session, language]);
-
-  useEffect(() => {
-    if (!authReady) return;
-    if (!session) {
-      if (routeRole) return;
-      if (!guestMode) {
-        setProfile(null);
-        setStep(welcomeSeen ? 'role' : 'welcome');
-      }
-      return;
-    }
+    let cancelled = false;
 
     loadMyProfile()
       .then(async (savedProfile) => {
+        if (cancelled) return;
         if (!savedProfile) {
           setProfile(null);
-          setStep(guestMode ? 'role' : welcomeSeen ? 'role' : 'welcome');
+          setStep('role');
+          if (location !== '/') navigate('/', { replace: true });
           return;
         }
         const cleanName = cleanDisplayName(savedProfile.name, savedProfile.role);
@@ -401,10 +368,14 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
         }
       })
       .catch((error: Error) => {
+        if (cancelled) return;
         setDatabaseError(error.message);
         setStep('databaseSetup');
       });
-  }, [authReady, session, guestMode, welcomeSeen]);
+    return () => {
+      cancelled = true;
+    };
+  }, [authReady, session?.user.id]);
 
   useEffect(() => () => {
     window.clearTimeout(searchTimerRef.current);
@@ -453,14 +424,18 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
   }, [step, role, category, helpSession, volunteer, messages, draft, blockedChat]);
 
   useEffect(() => {
-    if (!authReady || !routeRole) return;
+    if (!authReady || !session || !profile || !routeRole) return;
+    if (routeRole !== profile.role) {
+      navigate(routeForRole(profile.role), { replace: true });
+      return;
+    }
     const routedStep = stepForTabRoute(location, routeRole);
     if (!routedStep) {
       navigate(routeForRole(routeRole), { replace: true });
       return;
     }
     if (routedStep === 'chat' && routeRole === 'elder' && !volunteer) {
-      const aiChat = buildAiChatState(profile?.id ?? 'guest-elder', category);
+      const aiChat = buildAiChatState(currentUserId, category);
       setVolunteer(aiVolunteer);
       setHelpSession(aiChat.session);
       setMessages(aiChat.messages);
@@ -468,23 +443,18 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
       setAiSafety(null);
     }
     setStep(routedStep);
-  }, [authReady, location, routeRole]);
+  }, [authReady, location, profile?.id, profile?.role, routeRole, session?.user.id]);
 
   const chooseRole = async (nextRole: Role) => {
-    const isGuest = guestMode || isAnonymousSession(session);
     setRole(nextRole);
     setFirstActionPraise(nextRole === 'elder' ? 'Отлично. Теперь можно сразу попросить помощь.' : 'Отлично. Вы готовы принять первую просьбу о помощи.');
-    if (isGuest) {
-      localStorage.setItem('komek-guest-role', nextRole);
-    }
     if (!session) return;
 
     try {
       const fallbackName = nextRole === 'elder' ? uiText[language].needHelp : uiText[language].verifiedHelper;
       const meta = session.user.user_metadata;
       const fullName = [meta.first_name, meta.last_name].filter((item): item is string => typeof item === 'string' && item.trim().length > 0).join(' ');
-      const guestName = nextRole === 'elder' ? 'Гость, нужна помощь' : 'Гость-помощник';
-      const savedProfile = await createMyProfile(nextRole, isGuest ? guestName : fullName || (typeof meta.full_name === 'string' ? meta.full_name : fallbackName));
+      const savedProfile = await createMyProfile(nextRole, fullName || (typeof meta.full_name === 'string' ? meta.full_name : fallbackName));
       playOpenSound();
       setProfile(savedProfile);
       if (nextRole === 'volunteer') {
@@ -498,7 +468,7 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
     }
   };
 
-  const canSaveToSupabase = () => Boolean(profile && profile.auth_user_id !== 'guest');
+  const canSaveToSupabase = () => Boolean(profile);
 
   const saveRequestIfPossible = async (help: HelpCategory) => {
     if (!profile || !canSaveToSupabase()) return;
@@ -524,11 +494,11 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
     startSearchSound();
     setCategory(help);
     setStep('search');
-    const request = createHelpRequest(profile?.id ?? 'guest-elder', help);
+    const request = createHelpRequest(currentUserId, help);
 
     searchTimerRef.current = window.setTimeout(() => {
       void (async () => {
-      const elderId = profile?.id ?? 'guest-elder';
+      const elderId = currentUserId;
       const supabaseRequestId = await saveRequestIfPossible(help);
       let matched = canSaveToSupabase() ? await findOnlineVolunteer(elderId, help) : null;
       matched = matched ?? findRandomVolunteer(help, elderId) ?? findRandomVolunteer('any', elderId) ?? null;
@@ -558,7 +528,7 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
   };
 
   const prepareAiHelp = () => {
-    const aiChat = buildAiChatState(profile?.id ?? 'guest-elder', category);
+    const aiChat = buildAiChatState(currentUserId, category);
     setVolunteer(aiVolunteer);
     setHelpSession(aiChat.session);
     setBlockedChat(false);
@@ -733,9 +703,9 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
     setIsCheckingSafety(false);
 
     if (result.action === 'block' && volunteer) {
-      createSafetyReport(helpSession, profile?.id ?? 'guest-elder', volunteer.id, 'password', result.reason);
+      createSafetyReport(helpSession, currentUserId, volunteer.id, 'password', result.reason);
       persistReportIfPossible('password', result.reason);
-      blockUser(profile?.id ?? 'guest-elder', volunteer.id);
+      blockUser(currentUserId, volunteer.id);
       setBlockedChat(true);
       setHelpSession((current) => (current ? { ...current, status: 'reported', endedAt: new Date().toISOString() } : current));
       return;
@@ -848,7 +818,7 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
     const fallbackText = type === 'photo' ? uiText[language].photo : uiText[language].video;
     setMessages((items) => [
       ...items,
-      createMessage(helpSession.id, profile?.id ?? 'guest-elder', type, file.name || fallbackText, { url, name: file.name || fallbackText }),
+      createMessage(helpSession.id, currentUserId, type, file.name || fallbackText, { url, name: file.name || fallbackText }),
     ]);
   };
 
@@ -860,7 +830,7 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
 
   const submitReport = (reason: ReportReason, comment = reportComment) => {
     if (!volunteer) return;
-    createSafetyReport(helpSession, profile?.id ?? 'guest-elder', volunteer.id, reason, comment);
+    createSafetyReport(helpSession, currentUserId, volunteer.id, reason, comment);
     persistReportIfPossible(reason, comment);
     setReportComment('');
     setStep('safety');
@@ -868,7 +838,7 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
 
   const blockCurrentVolunteer = () => {
     if (!volunteer) return;
-    blockUser(profile?.id ?? 'guest-elder', volunteer.id);
+    blockUser(currentUserId, volunteer.id);
     setBlockedChat(true);
     setHelpSession((current) => (current ? { ...current, status: 'reported', endedAt: new Date().toISOString() } : current));
     setStep('blocked');
@@ -876,77 +846,36 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
 
   const stopUnsafeHelp = () => {
     if (!volunteer) return;
-    createSafetyReport(helpSession, profile?.id ?? 'guest-elder', volunteer.id, 'bad_behavior', uiText[language].unsafe);
+    createSafetyReport(helpSession, currentUserId, volunteer.id, 'bad_behavior', uiText[language].unsafe);
     persistReportIfPossible('bad_behavior', uiText[language].unsafe);
-    blockUser(profile?.id ?? 'guest-elder', volunteer.id);
+    blockUser(currentUserId, volunteer.id);
     setBlockedChat(true);
     setHelpSession((current) => (current ? { ...current, status: 'reported', endedAt: new Date().toISOString() } : current));
     setStep('blocked');
   };
 
   const finishRating = async () => {
-    if (profile?.role === 'volunteer' && !guestMode) setVolunteerStats(await loadVolunteerStats(profile.id));
+    if (profile?.role === 'volunteer') setVolunteerStats(await loadVolunteerStats(profile.id));
     resetMockBackend();
     setStep(role === 'elder' ? 'elderHome' : 'volunteerHome');
     navigate(routeForRole(role));
   };
 
-  const enterAsGuest = async () => {
-    playOpenSound();
-    const savedGuestRole = localStorage.getItem('komek-guest-role');
-    try {
-      setGuestMode(true);
-      setProfile(null);
-      setVolunteerStats(null);
-      setHelpSession(undefined);
-      setMessages([]);
-      setMessage('');
-      if (!session) {
-        const { error } = await signInAsAnonymousGuest();
-        if (error) throw error;
-      }
-      if (savedGuestRole === 'elder' || savedGuestRole === 'volunteer') {
-        navigate(savedGuestRole === 'elder' ? '/elder' : '/helper');
-        return;
-      }
-      setStep('role');
-    } catch {
-      setGuestMode(false);
-      setMessage('Не получилось войти как гость. Проверьте, включён ли Anonymous Sign-In в Supabase Auth.');
-      setStep('welcome');
-    }
-  };
-
-  const registerFromGuest = () => {
-    playCloseSound();
-    localStorage.removeItem('komek-guest-role');
-    localStorage.removeItem(savedStateKey);
-    setGuestMode(false);
-    setProfile(null);
-    setVolunteerStats(null);
-    setHelpSession(undefined);
-    setMessages([]);
-    setStep('welcome');
-    navigate('/');
-  };
-
   const finishWelcome = () => {
     localStorage.setItem('komek-welcome-seen', 'yes');
     setWelcomeSeen(true);
-    setStep('role');
+    setStep('loading');
     navigate('/');
   };
 
   const signOutApp = async () => {
     playCloseSound();
-    setGuestMode(false);
-    localStorage.removeItem('komek-guest-role');
     localStorage.removeItem(savedStateKey);
     setProfile(null);
     setVolunteerStats(null);
     setHelpSession(undefined);
     setMessages([]);
-    setStep('welcome');
+    setStep('loading');
     navigate('/');
     await supabase.auth.signOut();
   };
@@ -977,13 +906,11 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
   const elderBottomNavigation = <MobileBottomNav role="elder" onSelect={selectElderTab} />;
   const volunteerBottomNavigation = <MobileBottomNav role="volunteer" onSelect={selectVolunteerTab} />;
 
-  if (authReady && !session && !guestMode && !routeRole && welcomeSeen && step !== 'welcome') return <AuthPanel language={language} onGuest={enterAsGuest} />;
+  if (!authReady) return <LoadingScreen title={text.searchEyebrow} language={language} />;
 
-  if (!authReady || step === 'loading') return <LoadingScreen title={text.searchEyebrow} language={language} />;
-
-  if (step === 'welcome') {
+  if (!session && !welcomeSeen) {
     return (
-      <PhoneShell screenKey={step} language={language}>
+      <PhoneShell screenKey="welcome" language={language}>
         <section className="welcome-screen">
           <img className="brand-symbol brand-symbol--hero" src="/app-icon.png" alt="" aria-hidden="true" />
           <p className="eyebrow">KÖMEK</p>
@@ -996,12 +923,13 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
           </div>
           <div className="welcome-actions">
             <ActionButton onClick={finishWelcome}>Начать</ActionButton>
-            {!session ? <ActionButton tone="calm" onClick={enterAsGuest}>Попробовать как гость</ActionButton> : null}
           </div>
         </section>
       </PhoneShell>
     );
   }
+
+  if (!session) return <AuthPanel language={language} />;
 
   if (step === 'role') {
     return (
@@ -1013,7 +941,6 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
           <ActionButton onClick={() => chooseRole('elder')}>{text.needHelp}</ActionButton>
           <ActionButton tone="calm" onClick={() => chooseRole('volunteer')}>{text.wantHelp}</ActionButton>
         </div>
-        {guestMode ? <ActionButton tone="ghost" onClick={registerFromGuest}>Зарегистрироваться</ActionButton> : null}
       </PhoneShell>
     );
   }
@@ -1078,6 +1005,8 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
       </PhoneShell>
     );
   }
+
+  if (step === 'loading') return <LoadingScreen title={text.searchEyebrow} language={language} />;
 
   if (step === 'category') {
     return (
@@ -1520,7 +1449,6 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
         onSoundChange={setSoundEnabled}
         onSoundVolumeChange={setSoundVolume}
         onLanguageChange={setLanguage}
-        onRegisterGuest={guestMode ? registerFromGuest : undefined}
         bottomNavigation={role === 'elder' ? elderBottomNavigation : volunteerBottomNavigation}
         onBack={() => {
           setStep(role === 'elder' ? 'elderHome' : 'volunteerHome');
@@ -1704,7 +1632,6 @@ function InfoScreen({
   onSoundChange,
   onSoundVolumeChange,
   onLanguageChange,
-  onRegisterGuest,
   bottomNavigation,
   onBack,
 }: {
@@ -1722,7 +1649,6 @@ function InfoScreen({
   onSoundChange: (enabled: boolean) => void;
   onSoundVolumeChange: (volume: number) => void;
   onLanguageChange: (language: Language) => void;
-  onRegisterGuest?: () => void;
   bottomNavigation: ReactNode;
   onBack: () => void;
 }) {
@@ -1809,7 +1735,6 @@ function InfoScreen({
         }) : null}
       </div>
       <ActionButton onClick={onBack}>{uiText[language].back}</ActionButton>
-      {onRegisterGuest ? <ActionButton tone="ghost" onClick={onRegisterGuest}>Зарегистрироваться</ActionButton> : null}
     </PhoneShell>
   );
 }

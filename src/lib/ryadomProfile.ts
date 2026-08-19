@@ -33,10 +33,6 @@ export async function signInWithGoogle() {
   });
 }
 
-export async function signInAsAnonymousGuest() {
-  return supabase.auth.signInAnonymously();
-}
-
 export async function loadMyProfile() {
   const { data: authData, error: authError } = await supabase.auth.getUser();
   if (authError) throw authError;
