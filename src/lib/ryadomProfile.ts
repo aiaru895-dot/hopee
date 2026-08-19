@@ -33,6 +33,10 @@ export async function signInWithGoogle() {
   });
 }
 
+export async function signInAsAnonymousGuest() {
+  return supabase.auth.signInAnonymously();
+}
+
 export async function loadMyProfile() {
   const { data, error } = await supabase.from('profiles').select('*').maybeSingle();
   if (error) throw error;
