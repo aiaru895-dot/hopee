@@ -91,7 +91,7 @@ const elderHelpOptions: Array<{ id: HelpCategory; label: string }> = [
   { id: 'talk', label: 'Другое' },
 ];
 
-const elderNavItems = ['Главная', 'История', 'Правила', 'Профиль'];
+const elderNavItems = ['Главная', 'Чат', 'История', 'Правила', 'Профиль'];
 const aiQuickPrompts = [
   { icon: '📱', label: 'Телефон', text: 'Помогите с телефоном.' },
   { icon: '🌐', label: 'Интернет', text: 'Помогите с интернетом.' },
@@ -1007,10 +1007,13 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
         <BottomNav
           items={elderNavItems}
           activeIndex={0}
-          onFirst={() => setStep('elderHome')}
-          onSecond={() => setStep('history')}
-          onThird={() => setStep('safetyGuide')}
-          onFourth={() => setStep('safety')}
+          actions={[
+            () => setStep('elderHome'),
+            startAiHelp,
+            () => setStep('history'),
+            () => setStep('safetyGuide'),
+            () => setStep('safety'),
+          ]}
         />
       </PhoneShell>
     );
@@ -1085,6 +1088,7 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
   if (step === 'chat' && volunteer) {
     const isAiChat = volunteer.id === aiVolunteer.id;
     const isVolunteerChat = role === 'volunteer' || profile?.role === 'volunteer';
+    const showAiStarter = isAiChat && messages.length <= 1;
     const showSafetyTools = !isAiChat && !isVolunteerChat;
     const risk = showSafetyTools && messages.some((item) => hasSafetyRisk(item.text));
     return (
@@ -1097,8 +1101,13 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
           </div>
           {!isAiChat && !isVolunteerChat ? <button onClick={() => setStep('history')}>{text.history}</button> : null}
         </header>
-        {isAiChat ? (
+        {showAiStarter ? (
           <div className="ai-quick-actions" aria-label="Быстрые темы">
+            <div className="ai-starter-card">
+              <span aria-hidden="true">🤖</span>
+              <h2>Чем я могу помочь?</h2>
+              <p>Выберите тему или напишите вопрос.</p>
+            </div>
             {aiQuickPrompts.map((item) => (
               <button key={item.label} disabled={isAiThinking || blockedChat} onClick={() => void sendQuickAiPrompt(item.text)}>
                 <span aria-hidden="true">{item.icon}</span>
@@ -1131,6 +1140,12 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
           <div className="chat-list">
             {messages.map((item) => (
               <div key={item.id} className={item.senderId === myChatId ? 'message message--mine' : 'message'}>
+                {item.senderId !== myChatId ? (
+                  <span className="message__avatar" aria-hidden="true">{isAiChat ? '🤖' : 'А'}</span>
+                ) : null}
+                {item.senderId !== myChatId ? (
+                  <strong className="message__author">{isAiChat ? 'KÖMEK AI' : `${volunteer.name} · Волонтёр`}</strong>
+                ) : null}
                 {item.messageType === 'photo' && item.fileUrl ? <img className="message-media" src={item.fileUrl} alt={item.fileName ?? text.photo} /> : null}
                 {item.messageType === 'video' && item.fileUrl ? <video className="message-media" src={item.fileUrl} controls /> : null}
                 {item.messageType === 'voice' && item.fileUrl ? <audio className="voice-message" src={item.fileUrl} controls /> : null}
@@ -1377,10 +1392,12 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
         <BottomNav
           items={['Главная', 'Обращения', 'Чаты', 'Профиль']}
           activeIndex={0}
-          onFirst={() => setStep('volunteerHome')}
-          onSecond={() => setStep('incoming')}
-          onThird={() => setStep('history')}
-          onFourth={() => setStep('admin')}
+          actions={[
+            () => setStep('volunteerHome'),
+            () => setStep('incoming'),
+            () => setStep('history'),
+            () => setStep('admin'),
+          ]}
         />
       </PhoneShell>
     );
@@ -1398,10 +1415,12 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
         <BottomNav
           items={['Главная', 'Обращения', 'Чаты', 'Профиль']}
           activeIndex={1}
-          onFirst={() => setStep('volunteerHome')}
-          onSecond={() => setStep('incoming')}
-          onThird={() => setStep('history')}
-          onFourth={() => setStep('admin')}
+          actions={[
+            () => setStep('volunteerHome'),
+            () => setStep('incoming'),
+            () => setStep('history'),
+            () => setStep('admin'),
+          ]}
         />
       </PhoneShell>
     );
@@ -1507,27 +1526,27 @@ function HomeActionCard({
 function BottomNav({
   items,
   activeIndex,
-  onFirst,
-  onSecond,
-  onThird,
-  onFourth,
+  actions,
 }: {
   items: string[];
   activeIndex: number;
-  onFirst: () => void;
-  onSecond: () => void;
-  onThird: () => void;
-  onFourth: () => void;
+  actions: Array<() => void>;
 }) {
-  const icons = ['home', 'requests', 'chats', 'profile'];
+  const iconForItem = (item: string) => {
+    if (item === 'Главная') return 'home';
+    if (item === 'Чат' || item === 'Чаты') return 'chats';
+    if (item === 'История') return 'history';
+    if (item === 'Правила') return 'rules';
+    if (item === 'Обращения') return 'requests';
+    return 'profile';
+  };
   return (
-    <nav className="bottom-nav">
+    <nav className="bottom-nav" style={{ '--bottom-nav-count': items.length } as Record<string, number>}>
       {items.map((item, index) => {
-        const actions = [onFirst, onSecond, onThird, onFourth];
         return (
           <button
             key={item}
-            className={`bottom-nav__item bottom-nav__item--${icons[index]}${index === activeIndex ? ' active' : ''}`}
+            className={`bottom-nav__item bottom-nav__item--${iconForItem(item)}${index === activeIndex ? ' active' : ''}`}
             onClick={actions[index]}
             aria-current={index === activeIndex ? 'page' : undefined}
           >
