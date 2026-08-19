@@ -91,6 +91,14 @@ const elderHelpOptions: Array<{ id: HelpCategory; label: string }> = [
   { id: 'talk', label: 'Другое' },
 ];
 
+const elderNavItems = ['Главная', 'История', 'Правила', 'Профиль'];
+const aiQuickPrompts = [
+  { icon: '📱', label: 'Телефон', text: 'Помогите с телефоном.' },
+  { icon: '🌐', label: 'Интернет', text: 'Помогите с интернетом.' },
+  { icon: '💬', label: 'Сообщения', text: 'Помогите написать или отправить сообщение.' },
+  { icon: '🛡️', label: 'Безопасность', text: 'Расскажите, как не попасться мошенникам.' },
+];
+
 const aiVolunteer: Volunteer = {
   id: 'ai-helper',
   role: 'volunteer',
@@ -482,8 +490,7 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
     setBlockedChat(false);
     setAiSafety(null);
     setMessages([
-      createMessage(nextSession.id, aiVolunteer.id, 'system', 'Вы выбрали голосового помощника KÖMEK. Он поможет с простыми шагами и подскажет, когда нужен человек.'),
-      createMessage(nextSession.id, aiVolunteer.id, 'text', 'Нажмите «Голос» или напишите вопрос про телефон, интернет, приложения, сообщения или безопасность. Я помогу в рамках KÖMEK.'),
+      createMessage(nextSession.id, aiVolunteer.id, 'text', 'Чем вам помочь?'),
     ]);
     setStep('chat');
   };
@@ -659,6 +666,15 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
     await answerWithAi(nextMessages, userText);
   };
 
+  const sendQuickAiPrompt = async (userText: string) => {
+    if (!helpSession || volunteer?.id !== aiVolunteer.id || blockedChat || isAiThinking) return;
+    const nextMessage = createMessage(helpSession.id, myChatId, 'text', userText);
+    const nextMessages = [...messages, nextMessage];
+    setMessages(nextMessages);
+    setDraft('');
+    await answerWithAi(nextMessages, userText);
+  };
+
   const startSpeechRecognition = () => {
     const speechWindow = window as SpeechWindow;
     const SpeechRecognitionClass = speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition;
@@ -680,7 +696,7 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
       voiceTranscriptRef.current = transcript;
       setDraft(transcript);
     };
-    recognition.onerror = () => setVoiceError('Не получилось распознать речь. Можно написать сообщение вручную.');
+    recognition.onerror = () => setVoiceError('Не слышу вас 🎤 Разрешите доступ к микрофону и попробуйте ещё раз.');
     recognition.onend = () => {
       if (speechRecognitionRef.current === recognition) speechRecognitionRef.current = null;
     };
@@ -697,7 +713,7 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
     }
 
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
-      setVoiceError('Голосовые сообщения не поддерживаются в этом браузере.');
+      setVoiceError('Не слышу вас 🎤 Попробуйте написать сообщение вручную.');
       return;
     }
 
@@ -735,7 +751,7 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
       startSpeechRecognition();
       setIsRecordingVoice(true);
     } catch {
-      setVoiceError('Не получилось включить микрофон. Проверьте разрешение в браузере.');
+      setVoiceError('Не слышу вас 🎤 Разрешите доступ к микрофону и попробуйте ещё раз.');
       setVoicePrompt(false);
       setIsRecordingVoice(false);
       stopVoiceTracks();
@@ -920,31 +936,54 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
   if (step === 'elderHome') {
     return (
       <PhoneShell screenKey={step} language={language}>
-        <header className="top-bar">
+        <header className="home-app-header">
           <strong><img className="brand-mark" src="/app-icon.png" alt="" aria-hidden="true" />KÖMEK</strong>
-          <button onClick={() => setStep('safety')}>{text.settings}</button>
+          <button onClick={() => setStep('safety')} aria-label={text.settings}>
+            <span aria-hidden="true">⚙</span>
+            {text.settings}
+          </button>
         </header>
-        <section className="home-panel elder-home-panel">
-          {firstActionPraise ? <div className="praise-banner">{firstActionPraise}</div> : null}
-          <p className="eyebrow">KÖMEK</p>
-          <h1>Добрый день, {profileName}.</h1>
-          <p>Чем мы можем вам помочь?</p>
-          <ActionButton onClick={() => setStep('category')}>Мне нужна помощь</ActionButton>
-          <ActionButton tone="ghost" onClick={startAiHelp}>Голосовой помощник KÖMEK</ActionButton>
-          <p className="help-undertext">Мы найдём человека, который вам поможет.</p>
-        </section>
-        <section className="trust-note calm-panel">
-          <img className="elder-trust-image" src="/komek-support.png" alt="Волонтёр помогает пожилому человеку с телефоном" />
-          <div className="trust-note__text">
-            <strong>Важное правило</strong>
-            <p>Никому не сообщайте пароль, код из SMS, PIN-код и данные банковской карты.</p>
+        <section className="elder-home-hero">
+          <div>
+            <h1>Здравствуйте, <span>{profileName}!</span></h1>
+            <p>Мы рядом, чтобы помочь ❤</p>
           </div>
+          <img src="/komek-support.png" alt="Волонтёр помогает пожилому человеку с телефоном" />
         </section>
-        <div className="secondary-actions">
-          <button onClick={() => setStep('history')}>{text.history}</button>
-          <button onClick={() => setStep('safety')}>{text.settings}</button>
-          <button onClick={() => setStep('safetyGuide')}>Правила безопасности</button>
-        </div>
+        <section className="elder-action-list" aria-label="Основные действия">
+          <HomeActionCard
+            variant="primary"
+            icon="🎙"
+            title="Мне нужна помощь"
+            subtitle="Нажмите и расскажите, что случилось"
+            onClick={startAiHelp}
+          />
+          <HomeActionCard
+            icon="💬"
+            title="Написать помощнику"
+            subtitle="Напишите, что случилось"
+            onClick={() => startSearch('any')}
+          />
+          <HomeActionCard
+            icon="☎"
+            title="Позвонить помощнику"
+            subtitle="Мы поможем вам"
+            onClick={() => startSearch('talk')}
+          />
+        </section>
+        <button className="home-safety-card" onClick={() => setStep('safetyGuide')}>
+          <span aria-hidden="true">🛡</span>
+          <strong>Это безопасно</strong>
+          <p>Ваши данные под защитой. Мы никому не передаём информацию.</p>
+        </button>
+        <BottomNav
+          items={elderNavItems}
+          activeIndex={0}
+          onFirst={() => setStep('elderHome')}
+          onSecond={() => setStep('history')}
+          onThird={() => setStep('safetyGuide')}
+          onFourth={() => setStep('safety')}
+        />
       </PhoneShell>
     );
   }
@@ -1022,14 +1061,24 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
     const risk = showSafetyTools && messages.some((item) => hasSafetyRisk(item.text));
     return (
       <PhoneShell screenKey={step} language={language}>
-        <header className="chat-header">
+        <header className={`chat-header${isAiChat ? ' chat-header--ai' : ''}`}>
           <button className="back-button" onClick={() => setStep(isVolunteerChat ? 'volunteerHome' : isAiChat ? 'elderHome' : 'found')}>{text.back}</button>
           <div>
-            <h1>{isAiChat ? 'KÖMEK AI' : isVolunteerChat ? volunteer.name : `${volunteer.name} K.`}</h1>
-            <p>{isAiChat ? 'Голосовой помощник' : isVolunteerChat ? 'Пожилой пользователь пишет вам' : `${text.verifiedHelper}. Сейчас помогает вам.`}</p>
+            <h1>{isAiChat ? 'Помощник KÖMEK' : isVolunteerChat ? volunteer.name : `${volunteer.name} K.`}</h1>
+            <p>{isAiChat ? 'Чем вам помочь?' : isVolunteerChat ? 'Пожилой пользователь пишет вам' : `${text.verifiedHelper}. Сейчас помогает вам.`}</p>
           </div>
           {!isAiChat && !isVolunteerChat ? <button onClick={() => setStep('history')}>{text.history}</button> : null}
         </header>
+        {isAiChat ? (
+          <div className="ai-quick-actions" aria-label="Быстрые темы">
+            {aiQuickPrompts.map((item) => (
+              <button key={item.label} disabled={isAiThinking || blockedChat} onClick={() => void sendQuickAiPrompt(item.text)}>
+                <span aria-hidden="true">{item.icon}</span>
+                {item.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
         {showSafetyTools ? (
           <aside className="chat-side-alerts">
             <button className="safety-note safety-note-button" onClick={() => setStep('safetyGuide')}>Никому не сообщайте пароль, код из SMS, PIN-код и данные банковской карты. Читать правила</button>
@@ -1050,7 +1099,7 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
             {blockedChat ? <div className="warning">{text.blockedChat}</div> : null}
           </aside>
         ) : null}
-        <div className={`chat-content${showSafetyTools ? ' chat-content--with-alerts' : ''}`}>
+        <div className={`chat-content${showSafetyTools ? ' chat-content--with-alerts' : ''}${isAiChat ? ' chat-content--ai' : ''}`}>
           <div className="chat-list">
             {messages.map((item) => (
               <div key={item.id} className={item.senderId === myChatId ? 'message message--mine' : 'message'}>
@@ -1061,11 +1110,11 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
               </div>
             ))}
           </div>
-          <aside className="chat-ad-card" aria-label="Рекламное место">
+          {!isAiChat ? <aside className="chat-ad-card" aria-label="Рекламное место">
             <img src="/komek-support.png" alt="" aria-hidden="true" />
             <strong>Здесь могла быть ваша реклама</strong>
             <p>Партнёрские объявления будут показываться аккуратно и не мешать помощи.</p>
-          </aside>
+          </aside> : null}
         </div>
         {isAiChat && isAiThinking ? <div className="voice-status voice-status--thinking">KÖMEK AI печатает ответ...</div> : null}
         {persistenceNotice ? <div className="warning">{persistenceNotice}</div> : null}
@@ -1076,9 +1125,16 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
             <button onClick={toggleAiSpeechPause}>{isAiSpeechPaused ? 'Продолжить' : 'Стоп'}</button>
           </div>
         ) : null}
-        {voiceError ? <div className="warning">{voiceError}</div> : null}
-        <div className="chat-input">
+        {voiceError ? (
+          <div className="warning mic-warning">
+            <strong>Не слышу вас 🎤</strong>
+            <p>Разрешите доступ к микрофону и попробуйте ещё раз.</p>
+            <button onClick={toggleVoiceRecording}>Разрешить микрофон</button>
+          </div>
+        ) : null}
+        <div className={`chat-input${isAiChat ? ' chat-input--ai' : ''}`}>
           <input
+            aria-label={text.messagePlaceholder}
             disabled={blockedChat || isAiThinking}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
@@ -1090,8 +1146,16 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
             }}
             placeholder={text.messagePlaceholder}
           />
-          <button className="voice-round-button" data-recording={isRecordingVoice ? 'true' : 'false'} disabled={blockedChat || isAiThinking} onClick={toggleVoiceRecording}>{isRecordingVoice ? 'Стоп' : 'Голос'}</button>
-          <button disabled={blockedChat || isAiThinking} onClick={sendText}>{isAiThinking ? 'Ждём' : text.send}</button>
+          <button
+            className="voice-round-button"
+            aria-label={isAiChat && draft.trim() ? 'Отправить сообщение' : isRecordingVoice ? 'Остановить запись' : 'Записать голос'}
+            data-recording={isRecordingVoice ? 'true' : 'false'}
+            disabled={blockedChat || isAiThinking}
+            onClick={isAiChat && draft.trim() ? sendText : toggleVoiceRecording}
+          >
+            {isAiChat && draft.trim() ? '↑' : isRecordingVoice ? '■' : '🎙'}
+          </button>
+          {!isAiChat ? <button disabled={blockedChat || isAiThinking} onClick={sendText}>{isAiThinking ? 'Ждём' : text.send}</button> : null}
         </div>
         {!isAiChat ? <div className="chat-tools">
           <button disabled={blockedChat} onClick={() => photoInputRef.current?.click()}>Прикрепить фото</button>
@@ -1387,6 +1451,31 @@ function RoleChoiceHero() {
   );
 }
 
+function HomeActionCard({
+  icon,
+  title,
+  subtitle,
+  variant = 'secondary',
+  onClick,
+}: {
+  icon: string;
+  title: string;
+  subtitle: string;
+  variant?: 'primary' | 'secondary';
+  onClick: () => void;
+}) {
+  return (
+    <button className={`home-action-card home-action-card--${variant}`} onClick={onClick}>
+      <span className="home-action-card__icon" aria-hidden="true">{icon}</span>
+      <span className="home-action-card__text">
+        <strong>{title}</strong>
+        <small>{subtitle}</small>
+      </span>
+      <span className="home-action-card__chevron" aria-hidden="true">›</span>
+    </button>
+  );
+}
+
 function BottomNav({
   items,
   activeIndex,
@@ -1412,6 +1501,7 @@ function BottomNav({
             key={item}
             className={`bottom-nav__item bottom-nav__item--${icons[index]}${index === activeIndex ? ' active' : ''}`}
             onClick={actions[index]}
+            aria-current={index === activeIndex ? 'page' : undefined}
           >
             <span aria-hidden="true" />
             <b>{item}</b>
