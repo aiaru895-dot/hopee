@@ -1651,6 +1651,9 @@ input {
 .bottom-nav {
   display: none;
 }
+.bottom-nav__brand {
+  display: none;
+}
 .bottom-nav button {
   border: 0;
   background: transparent;
@@ -2534,6 +2537,97 @@ input {
     min-height: 0;
     overflow: hidden;
   }
+  .phone-shell--with-bottom-nav {
+    display: grid;
+    grid-template-columns: clamp(190px, 18vw, 224px) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: clamp(20px, 2.5vw, 36px);
+    padding: 24px;
+    background: #f7f3f5;
+  }
+  .phone-shell--with-bottom-nav > .screen-transition {
+    grid-column: 2;
+    grid-row: 1;
+    width: min(100%, 1280px);
+    justify-self: center;
+    padding: 42px clamp(8px, 2vw, 28px) 12px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+  }
+  .phone-shell--with-bottom-nav > .bottom-nav {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 20px 14px 82px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: var(--panel);
+    box-shadow: 0 18px 46px rgba(39, 35, 38, 0.08);
+  }
+  .phone-shell--with-bottom-nav .bottom-nav__brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 58px;
+    margin-bottom: 18px;
+    padding: 0 10px;
+    color: var(--ink);
+    font-size: 22px;
+    font-weight: 850;
+  }
+  .bottom-nav__brand img {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+  }
+  .phone-shell--with-bottom-nav > .bottom-nav button {
+    width: 100%;
+    min-height: 52px;
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    text-align: left;
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .phone-shell--with-bottom-nav > .bottom-nav button:hover {
+    background: var(--accent-soft);
+    color: var(--primary-dark);
+  }
+  .phone-shell--with-bottom-nav > .bottom-nav button.active {
+    background: var(--accent-soft);
+    color: var(--primary);
+    font-weight: 800;
+  }
+  .phone-shell--with-bottom-nav .bottom-nav__icon {
+    width: 26px;
+    height: 26px;
+  }
+  .phone-shell--with-bottom-nav .bottom-nav__label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .phone-shell--with-bottom-nav .quick-exit {
+    top: auto;
+    right: auto;
+    bottom: 42px;
+    left: 46px;
+  }
+  .phone-shell--with-bottom-nav .quick-language {
+    top: 26px;
+    right: 34px;
+  }
   .ad-slot {
     display: none;
   }
@@ -2649,32 +2743,88 @@ input {
   }
   .phone-shell--elderHome .screen-transition {
     display: grid;
-    grid-template-columns: 230px minmax(0, 1fr) minmax(300px, 0.55fr);
+    grid-template-columns: minmax(0, 1.1fr) minmax(340px, 0.9fr);
     grid-template-rows: auto minmax(0, 1fr) auto;
-    gap: 18px;
-    align-items: stretch;
+    grid-template-areas:
+      "header header"
+      "hero actions"
+      "safety actions";
+    gap: 20px clamp(28px, 4vw, 64px);
+    align-items: center;
   }
-  .phone-shell--elderHome .top-bar {
-    grid-column: 1 / -1;
+  .phone-shell--elderHome .home-app-header {
+    grid-area: header;
+    justify-content: flex-end;
   }
-  .phone-shell--elderHome .home-panel {
-    grid-column: 2;
+  .phone-shell--elderHome .home-app-header strong {
+    display: none;
+  }
+  .phone-shell--elderHome .elder-home-hero {
+    grid-area: hero;
     min-height: 0;
-    align-content: center;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
   }
-  .phone-shell--elderHome .trust-note {
-    grid-column: 3;
-    min-height: 0;
-    align-content: center;
+  .phone-shell--elderHome .elder-home-hero h1 {
+    font-size: 42px;
   }
-  .phone-shell--elderHome .bottom-nav {
-    grid-column: 1 / -1;
-    margin-top: 0;
+  .phone-shell--elderHome .elder-home-hero p {
+    font-size: 22px;
+  }
+  .phone-shell--elderHome .elder-home-hero img {
+    width: min(80%, 230px);
+    max-height: 180px;
+    justify-self: center;
+  }
+  .phone-shell--elderHome .elder-action-list {
+    grid-area: actions;
+    align-self: center;
+    gap: 14px;
+  }
+  .phone-shell--elderHome .home-action-card {
+    min-height: 98px;
+    grid-template-columns: 62px minmax(0, 1fr) 24px;
+    gap: 14px;
+    border-radius: 18px;
+    padding: 16px;
+  }
+  .phone-shell--elderHome .home-action-card--primary {
+    min-height: 108px;
+  }
+  .phone-shell--elderHome .home-action-card__icon {
+    width: 62px;
+    height: 62px;
+    font-size: 28px;
+  }
+  .phone-shell--elderHome .home-action-card__text strong {
+    font-size: 24px;
+  }
+  .phone-shell--elderHome .home-action-card__text small {
+    font-size: 17px;
+  }
+  .phone-shell--elderHome .home-action-card__chevron {
+    font-size: 38px;
+  }
+  .phone-shell--elderHome .home-safety-card {
+    grid-area: safety;
+    max-width: 620px;
+    border-radius: 16px;
+    padding: 14px;
+  }
+  .phone-shell--elderHome .home-safety-card span {
+    width: 54px;
+    height: 54px;
   }
   .phone-shell--volunteerHome .screen-transition {
     width: min(100%, 1280px);
     max-width: 1280px;
     margin: 0 auto;
+  }
+  .phone-shell--volunteerHome .volunteer-dashboard {
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+  }
+  .phone-shell--volunteerHome .volunteer-sidebar {
+    display: none;
   }
   .phone-shell--category .screen-transition {
     display: grid;
@@ -2751,6 +2901,9 @@ input {
   .report-options {
     grid-template-columns: repeat(2, 1fr);
   }
+  :root[data-theme="dark"] .phone-shell--with-bottom-nav {
+    background: #171315;
+  }
 }
 
 @media (min-width: 1024px) and (max-height: 780px) {
@@ -2784,6 +2937,17 @@ input {
 }
 
 @media (min-width: 1200px) {
+  .phone-shell--elderHome .elder-home-hero {
+    grid-template-columns: minmax(0, 1fr) minmax(180px, 42%);
+    gap: 8px;
+  }
+  .phone-shell--elderHome .elder-home-hero h1 {
+    font-size: 48px;
+  }
+  .phone-shell--elderHome .elder-home-hero img {
+    width: 100%;
+    max-height: 38vh;
+  }
   .screen-header h1,
   .home-panel h1,
   .center-screen h1 {

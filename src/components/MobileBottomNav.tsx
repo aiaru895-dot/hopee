@@ -45,6 +45,10 @@ export function MobileBottomNav({ role, onSelect }: { role: Role; onSelect: (tab
 
   return (
     <nav className="bottom-nav" aria-label="Основная навигация">
+      <div className="bottom-nav__brand" aria-hidden="true">
+        <img src="/app-icon.png" alt="" />
+        <span>KÖMEK</span>
+      </div>
       {items.map((item) => {
         const Icon = item.icon;
         const isActive = currentPath === item.href;
