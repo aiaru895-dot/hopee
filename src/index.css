@@ -74,7 +74,8 @@ button, input { font: inherit; }
   flex: 1;
   flex-direction: column;
   gap: 18px;
-  animation: screen-enter 0.34s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: screen-enter 0.58s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: opacity, transform, filter;
 }
 .top-bar {
   display: flex;
@@ -1434,6 +1435,37 @@ input {
   color: var(--primary-dark);
   box-shadow: 0 10px 24px rgba(184, 92, 120, 0.13);
 }
+.volume-control {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 2px solid var(--accent-line);
+  border-radius: 16px;
+  background: var(--accent-soft);
+}
+.volume-control span {
+  color: var(--primary-dark);
+  font-weight: 850;
+}
+.volume-control input {
+  width: 100%;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+.volume-control input::-webkit-slider-runnable-track {
+  height: 12px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--primary), #3e3a3d);
+}
+.volume-control input::-webkit-slider-thumb {
+  width: 26px;
+  height: 26px;
+  margin-top: -7px;
+  border: 3px solid #fff;
+  border-radius: 999px;
+  background: var(--primary);
+  box-shadow: 0 6px 16px rgba(39, 35, 38, 0.22);
+}
 
 :root[data-font-size="large"] .screen-header h1,
 :root[data-font-size="large"] .home-panel h1,
@@ -1590,6 +1622,15 @@ input {
   color: #dff5e8;
 }
 
+:root[data-theme="dark"] .volume-control {
+  background: #3a2730;
+  border-color: #68414e;
+}
+
+:root[data-theme="dark"] .volume-control span {
+  color: #fff;
+}
+
 :root[data-theme="dark"] .chat-input input {
   background: transparent;
   color: var(--ink);
@@ -1656,8 +1697,13 @@ input {
 @keyframes screen-enter {
   from {
     opacity: 0;
-    transform: translateY(12px) scale(0.992);
-    filter: blur(4px);
+    transform: translateY(22px) scale(0.985);
+    filter: blur(10px);
+  }
+  62% {
+    opacity: 1;
+    transform: translateY(-2px) scale(1.002);
+    filter: blur(0);
   }
   to {
     opacity: 1;

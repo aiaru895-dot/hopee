@@ -169,6 +169,7 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => (localStorage.getItem('hopee-theme') === 'dark' ? 'dark' : 'light'));
   const [fontMode, setFontMode] = useState<FontMode>(() => (localStorage.getItem('komek-font') === 'large' ? 'large' : 'normal'));
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('komek-sound') !== 'off');
+  const [soundVolume, setSoundVolume] = useState(() => Number(localStorage.getItem('komek-volume') ?? '70'));
   const [language, setLanguage] = useState<Language>(() => {
     const savedLanguage = localStorage.getItem('komek-language');
     return savedLanguage === 'kk' || savedLanguage === 'en' ? savedLanguage : 'ru';
@@ -265,6 +266,10 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
     localStorage.setItem('komek-sound', soundEnabled ? 'on' : 'off');
     if (!soundEnabled) stopSearchSound();
   }, [soundEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem('komek-volume', String(soundVolume));
+  }, [soundVolume]);
 
   useEffect(() => {
     document.documentElement.lang = language;
@@ -463,7 +468,7 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
       oscillator.frequency.setValueAtTime(520, context.currentTime);
       oscillator.frequency.exponentialRampToValueAtTime(760, context.currentTime + 0.12);
       gain.gain.setValueAtTime(0.0001, context.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.075, context.currentTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.075 * (soundVolume / 100), context.currentTime + 0.02);
       gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.18);
       oscillator.connect(gain);
       gain.connect(context.destination);
@@ -484,11 +489,11 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
   };
 
   const playOpenSound = () => {
-    playToneSequence([520, 660, 880], 0.07);
+    playToneSequence([520, 660, 880], 0.07 * (soundVolume / 100));
   };
 
   const playCloseSound = () => {
-    playToneSequence([880, 660, 440], 0.06);
+    playToneSequence([880, 660, 440], 0.06 * (soundVolume / 100));
   };
 
   const playToneSequence = (notes: number[], volume: number) => {
@@ -1202,10 +1207,12 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
         themeMode={themeMode}
         fontMode={fontMode}
         soundEnabled={soundEnabled}
+        soundVolume={soundVolume}
         language={language}
         onThemeChange={setThemeMode}
         onFontChange={setFontMode}
         onSoundChange={setSoundEnabled}
+        onSoundVolumeChange={setSoundVolume}
         onLanguageChange={setLanguage}
         onSignOut={guestMode ? registerFromGuest : signOutApp}
         signOutLabel={guestMode ? 'Зарегистрироваться' : uiText[language].signOut}
@@ -1389,10 +1396,12 @@ function InfoScreen({
   themeMode,
   fontMode,
   soundEnabled,
+  soundVolume,
   language,
   onThemeChange,
   onFontChange,
   onSoundChange,
+  onSoundVolumeChange,
   onLanguageChange,
   onSignOut,
   signOutLabel,
@@ -1405,10 +1414,12 @@ function InfoScreen({
   themeMode: ThemeMode;
   fontMode: FontMode;
   soundEnabled: boolean;
+  soundVolume: number;
   language: Language;
   onThemeChange: (theme: ThemeMode) => void;
   onFontChange: (font: FontMode) => void;
   onSoundChange: (enabled: boolean) => void;
+  onSoundVolumeChange: (volume: number) => void;
   onLanguageChange: (language: Language) => void;
   onSignOut: () => void;
   signOutLabel: string;
@@ -1446,10 +1457,20 @@ function InfoScreen({
         {step === 'safety' ? (
           <div className="settings-group">
             <strong>{uiText[language].gameSounds}</strong>
-            <div className="theme-toggle" role="group" aria-label={uiText[language].sound}>
-              <button className={soundEnabled ? 'active' : ''} onClick={() => onSoundChange(true)}>{uiText[language].soundOn}</button>
-              <button className={!soundEnabled ? 'active' : ''} onClick={() => onSoundChange(false)}>{uiText[language].soundOff}</button>
-            </div>
+            <label className="volume-control">
+              <span>{soundEnabled ? `${soundVolume}%` : uiText[language].soundOff}</span>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={soundEnabled ? soundVolume : 0}
+                onChange={(event) => {
+                  const nextVolume = Number(event.target.value);
+                  onSoundVolumeChange(nextVolume);
+                  onSoundChange(nextVolume > 0);
+                }}
+              />
+            </label>
           </div>
         ) : null}
         {step === 'safety' ? (
