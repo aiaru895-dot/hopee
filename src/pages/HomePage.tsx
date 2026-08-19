@@ -1,7 +1,9 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import type { ReactNode } from 'react';
 import { useLocation } from 'wouter';
 import { AuthPanel } from '../components/AuthPanel';
+import { MobileBottomNav, type NavigationTab } from '../components/MobileBottomNav';
 import { ActionButton, PhoneShell, ScreenHeader, TileButton } from '../components/RyadomUi';
 import { VolunteerCard } from '../components/VolunteerCard';
 import { analyzeChatSafety, type AiSafetyResult } from '../lib/aiSafety';
@@ -91,7 +93,6 @@ const elderHelpOptions: Array<{ id: HelpCategory; label: string }> = [
   { id: 'talk', label: 'Другое' },
 ];
 
-const elderNavItems = ['Главная', 'Чат', 'История', 'Правила', 'Профиль'];
 const aiQuickPrompts = [
   { icon: '📱', label: 'Телефон', text: 'Помогите с телефоном.' },
   { icon: '🌐', label: 'Интернет', text: 'Помогите с интернетом.' },
@@ -213,13 +214,41 @@ function routeForRole(nextRole: Role) {
   return nextRole === 'elder' ? '/elder' : '/helper';
 }
 
+function stepForTabRoute(path: string, routeRole: Role): Step | null {
+  const normalizedPath = path.length > 1 ? path.replace(/\/+$/, '') : path;
+  const routes: Record<string, Step> = routeRole === 'elder'
+    ? {
+        '/elder': 'elderHome',
+        '/elder/chat': 'chat',
+        '/elder/history': 'history',
+        '/elder/rules': 'safetyGuide',
+        '/elder/profile': 'admin',
+      }
+    : {
+        '/helper': 'volunteerHome',
+        '/helper/requests': 'incoming',
+        '/helper/chats': 'history',
+        '/helper/profile': 'admin',
+      };
+  return routes[normalizedPath] ?? null;
+}
+
+function buildAiChatState(elderId: string, category: HelpCategory) {
+  const request = createHelpRequest(elderId, category);
+  const session = createHelpSession(request, aiVolunteer);
+  return {
+    session,
+    messages: [createMessage(session.id, aiVolunteer.id, 'text', 'Чем вам помочь?')],
+  };
+}
+
 function isAnonymousSession(currentSession: Session | null) {
   return currentSession?.user.is_anonymous === true;
 }
 
 
 export function HomePage({ routeRole }: { routeRole?: Role }) {
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const savedAppState = useMemo(() => loadSavedAppState(), []);
   const [session, setSession] = useState<Session | null>(null);
   const [authReady, setAuthReady] = useState(false);
@@ -363,8 +392,9 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
         setRole(savedProfile.role);
         const homeStep = savedProfile.role === 'elder' ? 'elderHome' : 'volunteerHome';
         const restoredStep = savedAppState?.role === savedProfile.role ? getSafeRestoredStep(savedAppState, homeStep) : homeStep;
-        setStep(restoredStep);
-        navigate(routeForRole(savedProfile.role), { replace: true });
+        const routedStep = routeRole === savedProfile.role ? stepForTabRoute(location, savedProfile.role) : null;
+        setStep(routedStep ?? restoredStep);
+        if (routeRole !== savedProfile.role) navigate(routeForRole(savedProfile.role), { replace: true });
         if (savedProfile.role === 'volunteer') {
           await setMyVolunteerOnline(savedProfile.id, true);
           setVolunteerStats(await loadVolunteerStats(savedProfile.id));
@@ -421,6 +451,24 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
     };
     localStorage.setItem(savedStateKey, JSON.stringify(stateToSave));
   }, [step, role, category, helpSession, volunteer, messages, draft, blockedChat]);
+
+  useEffect(() => {
+    if (!authReady || !routeRole) return;
+    const routedStep = stepForTabRoute(location, routeRole);
+    if (!routedStep) {
+      navigate(routeForRole(routeRole), { replace: true });
+      return;
+    }
+    if (routedStep === 'chat' && routeRole === 'elder' && !volunteer) {
+      const aiChat = buildAiChatState(profile?.id ?? 'guest-elder', category);
+      setVolunteer(aiVolunteer);
+      setHelpSession(aiChat.session);
+      setMessages(aiChat.messages);
+      setBlockedChat(false);
+      setAiSafety(null);
+    }
+    setStep(routedStep);
+  }, [authReady, location, routeRole]);
 
   const chooseRole = async (nextRole: Role) => {
     const isGuest = guestMode || isAnonymousSession(session);
@@ -509,18 +557,19 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
     }, 1800);
   };
 
-  const startAiHelp = () => {
-    const elderId = profile?.id ?? 'guest-elder';
-    const request = createHelpRequest(elderId, category);
-    const nextSession = createHelpSession(request, aiVolunteer);
+  const prepareAiHelp = () => {
+    const aiChat = buildAiChatState(profile?.id ?? 'guest-elder', category);
     setVolunteer(aiVolunteer);
-    setHelpSession(nextSession);
+    setHelpSession(aiChat.session);
     setBlockedChat(false);
     setAiSafety(null);
-    setMessages([
-      createMessage(nextSession.id, aiVolunteer.id, 'text', 'Чем вам помочь?'),
-    ]);
+    setMessages(aiChat.messages);
     setStep('chat');
+  };
+
+  const startAiHelp = () => {
+    prepareAiHelp();
+    navigate('/elder/chat');
   };
 
   const speakAiAnswer = (answer: string) => {
@@ -839,6 +888,7 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
     if (profile?.role === 'volunteer' && !guestMode) setVolunteerStats(await loadVolunteerStats(profile.id));
     resetMockBackend();
     setStep(role === 'elder' ? 'elderHome' : 'volunteerHome');
+    navigate(routeForRole(role));
   };
 
   const enterAsGuest = async () => {
@@ -906,6 +956,27 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
     return () => window.removeEventListener('komek-sign-out', signOutApp);
   }, [signOutApp]);
 
+  const selectElderTab = (tab: NavigationTab) => {
+    if (tab === 'chat') {
+      if (!volunteer || helpSession?.status === 'completed') prepareAiHelp();
+      else setStep('chat');
+    }
+    if (tab === 'home') setStep('elderHome');
+    if (tab === 'history') setStep('history');
+    if (tab === 'rules') setStep('safetyGuide');
+    if (tab === 'profile') setStep('admin');
+  };
+
+  const selectVolunteerTab = (tab: NavigationTab) => {
+    if (tab === 'home') setStep('volunteerHome');
+    if (tab === 'requests') setStep('incoming');
+    if (tab === 'chat') setStep('history');
+    if (tab === 'profile') setStep('admin');
+  };
+
+  const elderBottomNavigation = <MobileBottomNav role="elder" onSelect={selectElderTab} />;
+  const volunteerBottomNavigation = <MobileBottomNav role="volunteer" onSelect={selectVolunteerTab} />;
+
   if (authReady && !session && !guestMode && !routeRole && welcomeSeen && step !== 'welcome') return <AuthPanel language={language} onGuest={enterAsGuest} />;
 
   if (!authReady || step === 'loading') return <LoadingScreen title={text.searchEyebrow} language={language} />;
@@ -963,10 +1034,10 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
 
   if (step === 'elderHome') {
     return (
-      <PhoneShell screenKey={step} language={language}>
+      <PhoneShell screenKey={step} language={language} bottomNavigation={elderBottomNavigation}>
         <header className="home-app-header">
           <strong><img className="brand-mark" src="/app-icon.png" alt="" aria-hidden="true" />KÖMEK</strong>
-          <button onClick={() => setStep('safety')} aria-label={text.settings}>
+          <button onClick={() => { setStep('admin'); navigate('/elder/profile'); }} aria-label={text.settings}>
             <span aria-hidden="true">⚙</span>
             {text.settings}
           </button>
@@ -999,22 +1070,11 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
             onClick={() => startSearch('talk')}
           />
         </section>
-        <button className="home-safety-card" onClick={() => setStep('safetyGuide')}>
+        <button className="home-safety-card" onClick={() => { setStep('safetyGuide'); navigate('/elder/rules'); }}>
           <span aria-hidden="true">🛡</span>
           <strong>Это безопасно</strong>
           <p>Ваши данные под защитой. Мы никому не передаём информацию.</p>
         </button>
-        <BottomNav
-          items={elderNavItems}
-          activeIndex={0}
-          actions={[
-            () => setStep('elderHome'),
-            startAiHelp,
-            () => setStep('history'),
-            () => setStep('safetyGuide'),
-            () => setStep('safety'),
-          ]}
-        />
       </PhoneShell>
     );
   }
@@ -1065,7 +1125,7 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
       <PhoneShell screenKey={step} language={language}>
         <ScreenHeader title="Помощник найден" subtitle="Проверенный помощник готов вам помочь." />
         <VolunteerCard volunteer={volunteer} language={language} />
-        <ActionButton onClick={() => setStep('chat')}>Начать помощь</ActionButton>
+        <ActionButton onClick={() => { setStep('chat'); navigate('/elder/chat'); }}>Начать помощь</ActionButton>
         <ActionButton tone="ghost" onClick={() => startSearch(category)}>{text.otherHelper}</ActionButton>
       </PhoneShell>
     );
@@ -1092,14 +1152,21 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
     const showSafetyTools = !isAiChat && !isVolunteerChat;
     const risk = showSafetyTools && messages.some((item) => hasSafetyRisk(item.text));
     return (
-      <PhoneShell screenKey={step} language={language}>
+      <PhoneShell
+        screenKey={step}
+        language={language}
+        bottomNavigation={isVolunteerChat ? volunteerBottomNavigation : elderBottomNavigation}
+      >
         <header className={`chat-header${isAiChat ? ' chat-header--ai' : ''}`}>
-          <button className="back-button" onClick={() => setStep(isVolunteerChat ? 'volunteerHome' : isAiChat ? 'elderHome' : 'found')}>{text.back}</button>
+          <button className="back-button" onClick={() => {
+            setStep(isVolunteerChat ? 'volunteerHome' : 'elderHome');
+            navigate(isVolunteerChat ? '/helper' : '/elder');
+          }}>{text.back}</button>
           <div>
             <h1>{isAiChat ? 'Помощник KÖMEK' : isVolunteerChat ? volunteer.name : `${volunteer.name} K.`}</h1>
             <p>{isAiChat ? 'Чем вам помочь?' : isVolunteerChat ? 'Пожилой пользователь пишет вам' : `${text.verifiedHelper}. Сейчас помогает вам.`}</p>
           </div>
-          {!isAiChat && !isVolunteerChat ? <button onClick={() => setStep('history')}>{text.history}</button> : null}
+          {!isAiChat && !isVolunteerChat ? <button onClick={() => { setStep('history'); navigate('/elder/history'); }}>{text.history}</button> : null}
         </header>
         {showAiStarter ? (
           <div className="ai-quick-actions" aria-label="Быстрые темы">
@@ -1118,7 +1185,7 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
         ) : null}
         {showSafetyTools ? (
           <aside className="chat-side-alerts">
-            <button className="safety-note safety-note-button" onClick={() => setStep('safetyGuide')}>Никому не сообщайте пароль, код из SMS, PIN-код и данные банковской карты. Читать правила</button>
+            <button className="safety-note safety-note-button" onClick={() => { setStep('safetyGuide'); navigate('/elder/rules'); }}>Никому не сообщайте пароль, код из SMS, PIN-код и данные банковской карты. Читать правила</button>
             {isCheckingSafety ? <div className="ai-safety ai-safety--checking">{text.aiChecking}</div> : null}
             {aiSafety && aiSafety.risk !== 'safe' ? (
               <div className={`ai-safety ai-safety--${aiSafety.risk}`}>
@@ -1235,14 +1302,25 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
           <button onClick={() => setStep('report')}>{text.complaint}</button>
           <button onClick={blockCurrentVolunteer}>{text.block}</button>
         </details> : null}
-        {!isAiChat ? <ActionButton tone="danger" onClick={isVolunteerChat ? () => setStep('volunteerHome') : completeHelp}>{isVolunteerChat ? 'Закончить разговор' : text.finishHelp}</ActionButton> : null}
+        {!isAiChat ? (
+          <ActionButton
+            tone="danger"
+            onClick={isVolunteerChat ? () => { setStep('volunteerHome'); navigate('/helper'); } : completeHelp}
+          >
+            {isVolunteerChat ? 'Закончить разговор' : text.finishHelp}
+          </ActionButton>
+        ) : null}
       </PhoneShell>
     );
   }
 
   if (step === 'safetyGuide') {
     return (
-      <PhoneShell screenKey={step} language={language}>
+      <PhoneShell
+        screenKey={step}
+        language={language}
+        bottomNavigation={role === 'elder' ? elderBottomNavigation : volunteerBottomNavigation}
+      >
         <ScreenHeader title="Правила безопасности" subtitle="Как безопасно пользоваться интернетом и KÖMEK." />
         <section className="safety-guide">
           <article>
@@ -1262,13 +1340,32 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
             <p>Общайтесь только в чате приложения. Не переходите по подозрительным ссылкам и не устанавливайте неизвестные приложения.</p>
           </article>
         </section>
-        <ActionButton onClick={() => setStep(volunteer ? 'chat' : role === 'elder' ? 'elderHome' : 'volunteerHome')}>{text.back}</ActionButton>
+        <ActionButton onClick={() => {
+          setStep(role === 'elder' ? 'elderHome' : 'volunteerHome');
+          navigate(routeForRole(role));
+        }}>{text.back}</ActionButton>
       </PhoneShell>
     );
   }
 
   if (step === 'history') {
-    return <HistoryScreen language={language} session={helpSession} volunteer={volunteer} messages={messages} onChat={() => setStep('chat')} onBack={() => setStep('elderHome')} />;
+    return (
+      <HistoryScreen
+        language={language}
+        session={helpSession}
+        volunteer={volunteer}
+        messages={messages}
+        bottomNavigation={role === 'elder' ? elderBottomNavigation : volunteerBottomNavigation}
+        onChat={() => {
+          setStep('chat');
+          navigate(role === 'elder' ? '/elder/chat' : '/helper/chats');
+        }}
+        onBack={() => {
+          setStep(role === 'elder' ? 'elderHome' : 'volunteerHome');
+          navigate(routeForRole(role));
+        }}
+      />
+    );
   }
 
   if (step === 'report' && volunteer) {
@@ -1303,7 +1400,7 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
           <p>{text.blockedHelp}</p>
           <p>{text.safetyNote}</p>
         </div>
-        <ActionButton onClick={() => setStep('elderHome')}>{text.home}</ActionButton>
+        <ActionButton onClick={() => { setStep('elderHome'); navigate('/elder'); }}>{text.home}</ActionButton>
       </PhoneShell>
     );
   }
@@ -1335,17 +1432,17 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
     const ratingValue = volunteerStats?.rating ?? 0;
 
     return (
-      <PhoneShell screenKey={step} language={language}>
+      <PhoneShell screenKey={step} language={language} bottomNavigation={volunteerBottomNavigation}>
         <section className="volunteer-dashboard">
           <aside className="volunteer-sidebar">
             <strong><img className="brand-mark" src="/app-icon.png" alt="" aria-hidden="true" />KÖMEK</strong>
             <nav>
               <button className="active">Главная</button>
-              <button onClick={() => setStep('incoming')}>Обращения</button>
-              <button onClick={() => setStep('history')}>Чаты</button>
-              <button onClick={() => setStep('history')}>История</button>
+              <button onClick={() => { setStep('incoming'); navigate('/helper/requests'); }}>Обращения</button>
+              <button onClick={() => { setStep('history'); navigate('/helper/chats'); }}>Чаты</button>
+              <button onClick={() => { setStep('history'); navigate('/helper/chats'); }}>История</button>
               <button onClick={() => setStep('volunteerProfile')}>Достижения</button>
-              <button onClick={() => setStep('admin')}>Профиль</button>
+              <button onClick={() => { setStep('admin'); navigate('/helper/profile'); }}>Профиль</button>
               <button onClick={() => setStep('safety')}>Настройки</button>
             </nav>
             <div className="volunteer-online">
@@ -1359,7 +1456,7 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
                 <p className="eyebrow">Панель волонтёра</p>
                 <h1>{profileName}</h1>
               </div>
-              <button onClick={() => setStep('admin')}>Профиль</button>
+              <button onClick={() => { setStep('admin'); navigate('/helper/profile'); }}>Профиль</button>
             </header>
             {firstActionPraise ? <div className="praise-banner">{firstActionPraise}</div> : null}
             <section className="volunteer-requests">
@@ -1367,7 +1464,7 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
                 <h2>Обращения</h2>
                 <p>Здесь появятся настоящие просьбы от пожилых пользователей.</p>
               </div>
-              <button onClick={() => setStep('incoming')}>Открыть обращения</button>
+              <button onClick={() => { setStep('incoming'); navigate('/helper/requests'); }}>Открыть обращения</button>
             </section>
             <section className="volunteer-chat-preview">
               <div>
@@ -1389,39 +1486,19 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
             {helped === 0 ? <p className="empty-state">{text.noActivity}</p> : null}
           </aside>
         </section>
-        <BottomNav
-          items={['Главная', 'Обращения', 'Чаты', 'Профиль']}
-          activeIndex={0}
-          actions={[
-            () => setStep('volunteerHome'),
-            () => setStep('incoming'),
-            () => setStep('history'),
-            () => setStep('admin'),
-          ]}
-        />
       </PhoneShell>
     );
   }
 
   if (step === 'incoming') {
     return (
-      <PhoneShell screenKey={step} language={language}>
+      <PhoneShell screenKey={step} language={language} bottomNavigation={volunteerBottomNavigation}>
         <ScreenHeader title="Нет запросов" subtitle="Когда появится новое обращение, оно будет здесь." />
         <div className="info-list">
           <p>Сейчас новых обращений нет.</p>
           <p>Вы онлайн и готовы помогать.</p>
         </div>
-        <ActionButton tone="ghost" onClick={() => setStep('volunteerHome')}>{text.notNow}</ActionButton>
-        <BottomNav
-          items={['Главная', 'Обращения', 'Чаты', 'Профиль']}
-          activeIndex={1}
-          actions={[
-            () => setStep('volunteerHome'),
-            () => setStep('incoming'),
-            () => setStep('history'),
-            () => setStep('admin'),
-          ]}
-        />
+        <ActionButton tone="ghost" onClick={() => { setStep('volunteerHome'); navigate('/helper'); }}>{text.notNow}</ActionButton>
       </PhoneShell>
     );
   }
@@ -1444,7 +1521,11 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
         onSoundVolumeChange={setSoundVolume}
         onLanguageChange={setLanguage}
         onRegisterGuest={guestMode ? registerFromGuest : undefined}
-        onBack={() => setStep(role === 'elder' ? 'elderHome' : 'volunteerHome')}
+        bottomNavigation={role === 'elder' ? elderBottomNavigation : volunteerBottomNavigation}
+        onBack={() => {
+          setStep(role === 'elder' ? 'elderHome' : 'volunteerHome');
+          navigate(routeForRole(role));
+        }}
       />
     );
   }
@@ -1523,47 +1604,12 @@ function HomeActionCard({
   );
 }
 
-function BottomNav({
-  items,
-  activeIndex,
-  actions,
-}: {
-  items: string[];
-  activeIndex: number;
-  actions: Array<() => void>;
-}) {
-  const iconForItem = (item: string) => {
-    if (item === 'Главная') return 'home';
-    if (item === 'Чат' || item === 'Чаты') return 'chats';
-    if (item === 'История') return 'history';
-    if (item === 'Правила') return 'rules';
-    if (item === 'Обращения') return 'requests';
-    return 'profile';
-  };
-  return (
-    <nav className="bottom-nav" style={{ '--bottom-nav-count': items.length } as Record<string, number>}>
-      {items.map((item, index) => {
-        return (
-          <button
-            key={item}
-            className={`bottom-nav__item bottom-nav__item--${iconForItem(item)}${index === activeIndex ? ' active' : ''}`}
-            onClick={actions[index]}
-            aria-current={index === activeIndex ? 'page' : undefined}
-          >
-            <span aria-hidden="true" />
-            <b>{item}</b>
-          </button>
-        );
-      })}
-    </nav>
-  );
-}
-
 function HistoryScreen({
   language,
   session,
   volunteer,
   messages,
+  bottomNavigation,
   onChat,
   onBack,
 }: {
@@ -1571,12 +1617,13 @@ function HistoryScreen({
   session?: HelpSession;
   volunteer?: Volunteer;
   messages: ChatMessage[];
+  bottomNavigation: ReactNode;
   onChat: () => void;
   onBack: () => void;
 }) {
   const sessionDate = session ? new Date(session.startedAt).toLocaleDateString(language === 'en' ? 'en-US' : 'ru-RU') : uiText[language].history;
   return (
-    <PhoneShell screenKey="history" language={language}>
+    <PhoneShell screenKey="history" language={language} bottomNavigation={bottomNavigation}>
       <ScreenHeader title={uiText[language].history} subtitle={uiText[language].intro} />
       <div className="history-list">
         {session && volunteer ? (
@@ -1658,6 +1705,7 @@ function InfoScreen({
   onSoundVolumeChange,
   onLanguageChange,
   onRegisterGuest,
+  bottomNavigation,
   onBack,
 }: {
   step: Step;
@@ -1675,13 +1723,14 @@ function InfoScreen({
   onSoundVolumeChange: (volume: number) => void;
   onLanguageChange: (language: Language) => void;
   onRegisterGuest?: () => void;
+  bottomNavigation: ReactNode;
   onBack: () => void;
 }) {
   const title = step === 'admin' ? uiText[language].profile : step === 'volunteerProfile' ? uiText[language].progress : uiText[language].settings;
   const reports = getSafetyReports();
   const profileName = cleanDisplayName(profile?.name, profile?.role);
   return (
-    <PhoneShell screenKey={step} language={language}>
+    <PhoneShell screenKey={step} language={language} bottomNavigation={bottomNavigation}>
       <ScreenHeader title={title} subtitle={profile ? `${profileName} · ${profile.city ?? ''}` : undefined} />
       <div className="info-list">
         {step === 'safety' ? <p>{uiText[language].safetyNote}</p> : null}

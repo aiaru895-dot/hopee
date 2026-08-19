@@ -6,10 +6,10 @@ import { NotFoundPage } from './pages/NotFoundPage';
 export default function App() {
   return (
     <Switch>
-      <Route path="/elder">
+      <Route path="/elder/*?">
         <HomePage routeRole="elder" />
       </Route>
-      <Route path="/helper">
+      <Route path="/helper/*?">
         <HomePage routeRole="volunteer" />
       </Route>
       <Route path="/">

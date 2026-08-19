@@ -22,11 +22,21 @@ function signOut() {
   window.dispatchEvent(new CustomEvent('komek-sign-out'));
 }
 
-export function PhoneShell({ children, screenKey = 'static', language = 'ru' }: { children: ReactNode; screenKey?: string; language?: Language }) {
+export function PhoneShell({
+  children,
+  screenKey = 'static',
+  language = 'ru',
+  bottomNavigation,
+}: {
+  children: ReactNode;
+  screenKey?: string;
+  language?: Language;
+  bottomNavigation?: ReactNode;
+}) {
   const showExit = !['welcome', 'auth', 'setup', 'loading'].includes(screenKey);
   return (
     <main className="app-shell">
-      <section className={`phone-shell phone-shell--${screenKey}`}>
+      <section className={`phone-shell phone-shell--${screenKey}${bottomNavigation ? ' phone-shell--with-bottom-nav' : ''}`}>
         {showExit ? (
           <button className="quick-exit" onClick={signOut} aria-label={uiText[language].exit} title={uiText[language].exit}>
             ←
@@ -42,6 +52,7 @@ export function PhoneShell({ children, screenKey = 'static', language = 'ru' }: 
         <div key={screenKey} className="screen-transition">
           {children}
         </div>
+        {bottomNavigation}
         <div className="ad-slot">
           <span>{uiText[language].ad}</span>
         </div>
