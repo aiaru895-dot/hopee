@@ -222,7 +222,8 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
   const [, navigate] = useLocation();
   const savedAppState = useMemo(() => loadSavedAppState(), []);
   const [session, setSession] = useState<Session | null>(null);
-  const [guestMode, setGuestMode] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
+  const [guestMode, setGuestMode] = useState(() => localStorage.getItem('komek-guest-role') === 'elder' || localStorage.getItem('komek-guest-role') === 'volunteer');
   const [welcomeSeen, setWelcomeSeen] = useState(() => localStorage.getItem('komek-welcome-seen') === 'yes');
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [volunteerStats, setVolunteerStats] = useState<VolunteerProfileRow | null>(null);
@@ -271,8 +272,16 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
   const myChatId = profile?.id ?? (role === 'elder' ? 'guest-elder' : 'guest-volunteer');
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => setSession(nextSession));
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setGuestMode(isAnonymousSession(data.session));
+      setAuthReady(true);
+    });
+    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+      if (nextSession) setGuestMode(isAnonymousSession(nextSession));
+      setAuthReady(true);
+    });
     return () => data.subscription.unsubscribe();
   }, []);
 
@@ -282,6 +291,22 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
       localStorage.removeItem('komek-guest-role');
     }
   }, [session, guestMode]);
+
+  useEffect(() => {
+    if (!authReady || session) return;
+    const savedGuestRole = localStorage.getItem('komek-guest-role');
+    if (savedGuestRole !== 'elder' && savedGuestRole !== 'volunteer') return;
+
+    setGuestMode(true);
+    void signInAsAnonymousGuest().then(({ error }) => {
+      if (error) {
+        localStorage.removeItem('komek-guest-role');
+        setGuestMode(false);
+        setMessage('Не получилось восстановить гостевой вход. Попробуйте войти как гость ещё раз.');
+        setStep(welcomeSeen ? 'role' : 'welcome');
+      }
+    });
+  }, [authReady, session, welcomeSeen]);
 
   useEffect(() => {
     const handleLanguageChange = (event: Event) => {
@@ -295,6 +320,7 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
   }, []);
 
   useEffect(() => {
+    if (!authReady) return;
     if (routeRole && !session && !guestMode) {
       setGuestMode(true);
       void signInAsAnonymousGuest().then(({ error }) => {
@@ -310,9 +336,10 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
     if (!routeRole || !session || profile) return;
     setGuestMode(isAnonymousSession(session));
     void chooseRole(routeRole);
-  }, [routeRole, session, language]);
+  }, [authReady, routeRole, session, language]);
 
   useEffect(() => {
+    if (!authReady) return;
     if (!session) {
       if (routeRole) return;
       if (!guestMode) {
@@ -347,7 +374,7 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
         setDatabaseError(error.message);
         setStep('databaseSetup');
       });
-  }, [session, guestMode, welcomeSeen]);
+  }, [authReady, session, guestMode, welcomeSeen]);
 
   useEffect(() => () => {
     window.clearTimeout(searchTimerRef.current);
@@ -396,9 +423,10 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
   }, [step, role, category, helpSession, volunteer, messages, draft, blockedChat]);
 
   const chooseRole = async (nextRole: Role) => {
+    const isGuest = guestMode || isAnonymousSession(session);
     setRole(nextRole);
     setFirstActionPraise(nextRole === 'elder' ? 'Отлично. Теперь можно сразу попросить помощь.' : 'Отлично. Вы готовы принять первую просьбу о помощи.');
-    if (guestMode) {
+    if (isGuest) {
       localStorage.setItem('komek-guest-role', nextRole);
     }
     if (!session) return;
@@ -408,7 +436,7 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
       const meta = session.user.user_metadata;
       const fullName = [meta.first_name, meta.last_name].filter((item): item is string => typeof item === 'string' && item.trim().length > 0).join(' ');
       const guestName = nextRole === 'elder' ? 'Гость, нужна помощь' : 'Гость-помощник';
-      const savedProfile = await createMyProfile(nextRole, guestMode ? guestName : fullName || (typeof meta.full_name === 'string' ? meta.full_name : fallbackName));
+      const savedProfile = await createMyProfile(nextRole, isGuest ? guestName : fullName || (typeof meta.full_name === 'string' ? meta.full_name : fallbackName));
       playOpenSound();
       setProfile(savedProfile);
       if (nextRole === 'volunteer') {
@@ -878,9 +906,9 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
     return () => window.removeEventListener('komek-sign-out', signOutApp);
   }, [signOutApp]);
 
-  if (!session && !guestMode && !routeRole && welcomeSeen && step !== 'welcome') return <AuthPanel language={language} onGuest={enterAsGuest} />;
+  if (authReady && !session && !guestMode && !routeRole && welcomeSeen && step !== 'welcome') return <AuthPanel language={language} onGuest={enterAsGuest} />;
 
-  if (step === 'loading') return <LoadingScreen title={text.searchEyebrow} language={language} />;
+  if (!authReady || step === 'loading') return <LoadingScreen title={text.searchEyebrow} language={language} />;
 
   if (step === 'welcome') {
     return (
