@@ -38,7 +38,16 @@ export async function signInAsAnonymousGuest() {
 }
 
 export async function loadMyProfile() {
-  const { data, error } = await supabase.from('profiles').select('*').maybeSingle();
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  const authUser = authData.user;
+  if (!authUser) return null;
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('auth_user_id', authUser.id)
+    .maybeSingle();
   if (error) throw error;
   return data as ProfileRow | null;
 }
