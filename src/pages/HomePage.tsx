@@ -205,6 +205,10 @@ function routeForRole(nextRole: Role) {
   return nextRole === 'elder' ? '/elder' : '/helper';
 }
 
+function isAnonymousSession(currentSession: Session | null) {
+  return currentSession?.user.is_anonymous === true;
+}
+
 
 export function HomePage({ routeRole }: { routeRole?: Role }) {
   const [, navigate] = useLocation();
@@ -265,6 +269,13 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
   }, []);
 
   useEffect(() => {
+    if (session && !isAnonymousSession(session) && guestMode) {
+      setGuestMode(false);
+      localStorage.removeItem('komek-guest-role');
+    }
+  }, [session, guestMode]);
+
+  useEffect(() => {
     const handleLanguageChange = (event: Event) => {
       const nextLanguage = (event as CustomEvent<Language>).detail;
       if (nextLanguage === 'ru' || nextLanguage === 'kk' || nextLanguage === 'en') {
@@ -289,7 +300,7 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
       return;
     }
     if (!routeRole || !session || profile) return;
-    setGuestMode(true);
+    setGuestMode(isAnonymousSession(session));
     void chooseRole(routeRole);
   }, [routeRole, session, language]);
 
@@ -846,6 +857,11 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
     await supabase.auth.signOut();
   };
 
+  useEffect(() => {
+    window.addEventListener('komek-sign-out', signOutApp);
+    return () => window.removeEventListener('komek-sign-out', signOutApp);
+  }, [signOutApp]);
+
   if (!session && !guestMode && !routeRole && welcomeSeen && step !== 'welcome') return <AuthPanel language={language} onGuest={enterAsGuest} />;
 
   if (step === 'loading') return <LoadingScreen title={text.searchEyebrow} language={language} />;
@@ -882,7 +898,7 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
           <ActionButton onClick={() => chooseRole('elder')}>{text.needHelp}</ActionButton>
           <ActionButton tone="calm" onClick={() => chooseRole('volunteer')}>{text.wantHelp}</ActionButton>
         </div>
-        <ActionButton tone="ghost" onClick={guestMode ? registerFromGuest : signOutApp}>{guestMode ? 'Зарегистрироваться' : text.exit}</ActionButton>
+        {guestMode ? <ActionButton tone="ghost" onClick={registerFromGuest}>Зарегистрироваться</ActionButton> : null}
       </PhoneShell>
     );
   }
@@ -896,7 +912,7 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
           <p>{databaseError}</p>
         </div>
         <ActionButton onClick={() => window.location.reload()}>{text.retry}</ActionButton>
-        <ActionButton tone="ghost" onClick={signOutApp}>{text.exit}</ActionButton>
+        <ActionButton tone="ghost" onClick={() => setStep(role === 'elder' ? 'elderHome' : 'volunteerHome')}>{text.back}</ActionButton>
       </PhoneShell>
     );
   }
@@ -1316,8 +1332,7 @@ export function HomePage({ routeRole }: { routeRole?: Role }) {
         onSoundChange={setSoundEnabled}
         onSoundVolumeChange={setSoundVolume}
         onLanguageChange={setLanguage}
-        onSignOut={guestMode ? registerFromGuest : signOutApp}
-        signOutLabel={guestMode ? 'Зарегистрироваться' : uiText[language].signOut}
+        onRegisterGuest={guestMode ? registerFromGuest : undefined}
         onBack={() => setStep(role === 'elder' ? 'elderHome' : 'volunteerHome')}
       />
     );
@@ -1505,8 +1520,7 @@ function InfoScreen({
   onSoundChange,
   onSoundVolumeChange,
   onLanguageChange,
-  onSignOut,
-  signOutLabel,
+  onRegisterGuest,
   onBack,
 }: {
   step: Step;
@@ -1523,8 +1537,7 @@ function InfoScreen({
   onSoundChange: (enabled: boolean) => void;
   onSoundVolumeChange: (volume: number) => void;
   onLanguageChange: (language: Language) => void;
-  onSignOut: () => void;
-  signOutLabel: string;
+  onRegisterGuest?: () => void;
   onBack: () => void;
 }) {
   const title = step === 'admin' ? uiText[language].profile : step === 'volunteerProfile' ? uiText[language].progress : uiText[language].settings;
@@ -1610,7 +1623,7 @@ function InfoScreen({
         }) : null}
       </div>
       <ActionButton onClick={onBack}>{uiText[language].back}</ActionButton>
-      <ActionButton tone="ghost" onClick={onSignOut}>{signOutLabel}</ActionButton>
+      {onRegisterGuest ? <ActionButton tone="ghost" onClick={onRegisterGuest}>Зарегистрироваться</ActionButton> : null}
     </PhoneShell>
   );
 }
