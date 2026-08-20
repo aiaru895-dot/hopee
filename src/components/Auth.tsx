@@ -51,7 +51,7 @@ export function Auth() {
           {busy ? '...' : mode === 'signin' ? 'Войти' : 'Создать аккаунт'}
         </button>
       </form>
-      {message && <p className="message">{message}</p>}
+      {message && <p className="form-message">{message}</p>}
       <button className="ghost" onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}>
         {mode === 'signin' ? 'Нет аккаунта? Зарегистрируйся' : 'Уже есть аккаунт? Войти'}
       </button>

@@ -101,7 +101,7 @@ export function AuthPanel({ language }: { language: Language }) {
             <input type="password" placeholder={text.password} value={password} onChange={(event) => setPassword(event.target.value)} minLength={6} required />
             <button className="submit-button" disabled={busy}>{busy ? 'Загрузка...' : mode === 'signin' ? text.signIn : text.signUp}</button>
           </form>
-          {message ? <p className="message">{message}</p> : null}
+          {message ? <p className="form-message">{message}</p> : null}
           <ActionButton tone="ghost" onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}>
             {mode === 'signin' ? text.signUp : text.haveAccount}
           </ActionButton>

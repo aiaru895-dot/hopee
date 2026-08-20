@@ -21,7 +21,8 @@ import {
   resetMockBackend,
 } from '../lib/ryadomServices';
 import { createMyProfile, loadMyProfile, loadVolunteerStats, updateMyProfileName, type ProfileRow, type VolunteerProfileRow } from '../lib/ryadomProfile';
-import { createSupabaseHelpSession, findOnlineVolunteer, saveHelpRequest, saveSafetyReport, setMyVolunteerOnline } from '../lib/ryadomPersistence';
+import { createSupabaseHelpSession, findOnlineVolunteer, saveChatMessage, saveHelpRequest, saveSafetyReport, setMyVolunteerOnline } from '../lib/ryadomPersistence';
+import { loadChatMessages, loadLatestVolunteerConversation, watchChatMessages, watchVolunteerConversations, type VolunteerConversation } from '../lib/ryadomRealtime';
 import { supabase } from '../lib/supabase';
 import type { Language } from '../lib/i18n';
 import { languageNames, uiText } from '../lib/i18n';
@@ -237,7 +238,7 @@ function stepForTabRoute(path: string, routeRole: Role): Step | null {
     : {
         '/helper': 'volunteerHome',
         '/helper/requests': 'incoming',
-        '/helper/chats': 'history',
+        '/helper/chats': 'chat',
         '/helper/profile': 'admin',
       };
   return routes[normalizedPath] ?? null;
@@ -267,6 +268,7 @@ export function HomePage() {
   const [category, setCategory] = useState<HelpCategory>(savedAppState?.category ?? 'any');
   const [helpSession, setHelpSession] = useState<HelpSession | undefined>(savedAppState?.helpSession);
   const [messages, setMessages] = useState<ChatMessage[]>(savedAppState?.messages ?? []);
+  const [incomingConversation, setIncomingConversation] = useState<VolunteerConversation | null>(null);
   const [draft, setDraft] = useState(savedAppState?.draft ?? '');
   const [rating, setRating] = useState(0);
   const [message, setMessage] = useState('');
@@ -376,6 +378,60 @@ export function HomePage() {
       cancelled = true;
     };
   }, [authReady, session?.user.id]);
+
+  useEffect(() => {
+    if (profile?.role !== 'volunteer') {
+      setIncomingConversation(null);
+      return;
+    }
+    let active = true;
+
+    const syncConversation = async (openRequest = false) => {
+      try {
+        const conversation = await loadLatestVolunteerConversation(profile.id);
+        if (!active) return;
+        setIncomingConversation(conversation);
+        if (conversation) {
+          setCategory(conversation.category);
+          setHelpSession(conversation.session);
+        }
+        if (conversation && openRequest) {
+          setStep('incoming');
+          navigate('/helper/requests');
+        }
+      } catch {
+        if (active) setPersistenceNotice('Не получилось обновить входящие обращения. Проверьте подключение.');
+      }
+    };
+
+    void syncConversation();
+    const stopWatching = watchVolunteerConversations(profile.id, () => void syncConversation(true));
+    return () => {
+      active = false;
+      stopWatching();
+    };
+  }, [profile?.id, profile?.role]);
+
+  useEffect(() => {
+    if (!helpSession || volunteer?.id === aiVolunteer.id) return;
+    let active = true;
+
+    const syncMessages = async () => {
+      try {
+        const savedMessages = await loadChatMessages(helpSession.id);
+        if (active) setMessages(savedMessages);
+      } catch {
+        if (active) setPersistenceNotice('Не получилось обновить сообщения. Проверьте подключение.');
+      }
+    };
+
+    void syncMessages();
+    const stopWatching = watchChatMessages(helpSession.id, () => void syncMessages());
+    return () => {
+      active = false;
+      stopWatching();
+    };
+  }, [helpSession?.id, volunteer?.id]);
 
   useEffect(() => () => {
     window.clearTimeout(searchTimerRef.current);
@@ -696,6 +752,13 @@ export function HomePage() {
       await answerWithAi(nextMessages, userText);
       return;
     }
+    try {
+      await saveChatMessage(nextMessage);
+      setPersistenceNotice('');
+    } catch {
+      setPersistenceNotice('Сообщение видно у вас, но не отправилось. Проверьте подключение и повторите.');
+      return;
+    }
     if (role === 'volunteer') return;
     setIsCheckingSafety(true);
     const result = await analyzeChatSafety(nextMessages);
@@ -708,9 +771,7 @@ export function HomePage() {
       blockUser(currentUserId, volunteer.id);
       setBlockedChat(true);
       setHelpSession((current) => (current ? { ...current, status: 'reported', endedAt: new Date().toISOString() } : current));
-      return;
     }
-    await answerWithAi(nextMessages, userText);
   };
 
   const sendQuickAiPrompt = async (userText: string) => {
@@ -899,8 +960,18 @@ export function HomePage() {
   const selectVolunteerTab = (tab: NavigationTab) => {
     if (tab === 'home') setStep('volunteerHome');
     if (tab === 'requests') setStep('incoming');
-    if (tab === 'chat') setStep('history');
+    if (tab === 'chat') setStep('chat');
     if (tab === 'profile') setStep('admin');
+  };
+
+  const openIncomingConversation = () => {
+    if (!incomingConversation) return;
+    setCategory(incomingConversation.category);
+    setHelpSession(incomingConversation.session);
+    setMessages([]);
+    setBlockedChat(false);
+    setStep('chat');
+    navigate('/helper/chats');
   };
 
   const elderBottomNavigation = <MobileBottomNav role="elder" onSelect={selectElderTab} />;
@@ -936,7 +1007,7 @@ export function HomePage() {
       <PhoneShell screenKey={step} language={language}>
         <ScreenHeader title={text.roleTitle} subtitle={text.roleSubtitle} />
         <RoleChoiceHero />
-        {message ? <p className="message">{message}</p> : null}
+        {message ? <p className="form-message">{message}</p> : null}
         <div className="stack">
           <ActionButton onClick={() => chooseRole('elder')}>{text.needHelp}</ActionButton>
           <ActionButton tone="calm" onClick={() => chooseRole('volunteer')}>{text.wantHelp}</ActionButton>
@@ -1074,9 +1145,22 @@ export function HomePage() {
     );
   }
 
-  if (step === 'chat' && volunteer) {
-    const isAiChat = volunteer.id === aiVolunteer.id;
+  if (step === 'chat' && profile?.role === 'volunteer' && !incomingConversation) {
+    return (
+      <PhoneShell screenKey={step} language={language} bottomNavigation={volunteerBottomNavigation}>
+        <ScreenHeader title="Нет активного чата" subtitle="Когда пожилой пользователь выберет вас, диалог появится здесь автоматически." />
+        <div className="info-list">
+          <p>Вы онлайн. Новое обращение откроется во вкладке «Обращения».</p>
+        </div>
+        <ActionButton onClick={() => { setStep('incoming'); navigate('/helper/requests'); }}>Проверить обращения</ActionButton>
+      </PhoneShell>
+    );
+  }
+
+  if (step === 'chat' && (volunteer || incomingConversation)) {
+    const isAiChat = volunteer?.id === aiVolunteer.id;
     const isVolunteerChat = role === 'volunteer' || profile?.role === 'volunteer';
+    const partnerName = isVolunteerChat ? incomingConversation?.elderName ?? 'Пожилой пользователь' : volunteer?.name ?? 'Помощник';
     const showAiStarter = isAiChat && messages.length <= 1;
     const showSafetyTools = !isAiChat && !isVolunteerChat;
     const risk = showSafetyTools && messages.some((item) => hasSafetyRisk(item.text));
@@ -1092,7 +1176,7 @@ export function HomePage() {
             navigate(isVolunteerChat ? '/helper' : '/elder');
           }}>{text.back}</button>
           <div>
-            <h1>{isAiChat ? 'Помощник KÖMEK' : isVolunteerChat ? volunteer.name : `${volunteer.name} K.`}</h1>
+            <h1>{isAiChat ? 'Помощник KÖMEK' : isVolunteerChat ? partnerName : `${partnerName} K.`}</h1>
             <p>{isAiChat ? 'Чем вам помочь?' : isVolunteerChat ? 'Пожилой пользователь пишет вам' : `${text.verifiedHelper}. Сейчас помогает вам.`}</p>
           </div>
           {!isAiChat && !isVolunteerChat ? <button onClick={() => { setStep('history'); navigate('/elder/history'); }}>{text.history}</button> : null}
@@ -1140,7 +1224,7 @@ export function HomePage() {
                   <span className="message__avatar" aria-hidden="true">{isAiChat ? '🤖' : 'А'}</span>
                 ) : null}
                 {item.senderId !== myChatId ? (
-                  <strong className="message__author">{isAiChat ? 'KÖMEK AI' : `${volunteer.name} · Волонтёр`}</strong>
+                  <strong className="message__author">{isAiChat ? 'KÖMEK AI' : isVolunteerChat ? partnerName : `${partnerName} · Волонтёр`}</strong>
                 ) : null}
                 {item.messageType === 'photo' && item.fileUrl ? <img className="message-media" src={item.fileUrl} alt={item.fileName ?? text.photo} /> : null}
                 {item.messageType === 'video' && item.fileUrl ? <video className="message-media" src={item.fileUrl} controls /> : null}
@@ -1282,7 +1366,7 @@ export function HomePage() {
       <HistoryScreen
         language={language}
         session={helpSession}
-        volunteer={volunteer}
+        volunteer={volunteer ?? (incomingConversation ? { name: incomingConversation.elderName } : undefined)}
         messages={messages}
         bottomNavigation={role === 'elder' ? elderBottomNavigation : volunteerBottomNavigation}
         onChat={() => {
@@ -1359,6 +1443,7 @@ export function HomePage() {
   if (step === 'volunteerHome') {
     const helped = volunteerStats?.people_helped ?? 0;
     const ratingValue = volunteerStats?.rating ?? 0;
+    const incomingCategoryLabel = elderHelpOptions.find((item) => item.id === incomingConversation?.category)?.label;
 
     return (
       <PhoneShell screenKey={step} language={language} bottomNavigation={volunteerBottomNavigation}>
@@ -1390,15 +1475,15 @@ export function HomePage() {
             {firstActionPraise ? <div className="praise-banner">{firstActionPraise}</div> : null}
             <section className="volunteer-requests">
               <div>
-                <h2>Обращения</h2>
-                <p>Здесь появятся настоящие просьбы от пожилых пользователей.</p>
+                <h2>{incomingConversation ? 'Новое обращение' : 'Обращения'}</h2>
+                <p>{incomingConversation ? `${incomingConversation.elderName} хочет пообщаться. Тема: ${incomingCategoryLabel ?? 'Помощь'}.` : 'Здесь появятся настоящие просьбы от пожилых пользователей.'}</p>
               </div>
-              <button onClick={() => { setStep('incoming'); navigate('/helper/requests'); }}>Открыть обращения</button>
+              <button onClick={() => { setStep('incoming'); navigate('/helper/requests'); }}>{incomingConversation ? 'Посмотреть запрос' : 'Открыть обращения'}</button>
             </section>
             <section className="volunteer-chat-preview">
               <div>
                 <h2>Чаты</h2>
-                <p>Пока активных чатов нет. Когда вы примете реальное обращение, переписка откроется здесь.</p>
+                <p>{incomingConversation ? `Чат с пользователем ${incomingConversation.elderName} готов к открытию.` : 'Пока активных чатов нет. Когда вы примете реальное обращение, переписка откроется здесь.'}</p>
               </div>
             </section>
           </main>
@@ -1420,13 +1505,29 @@ export function HomePage() {
   }
 
   if (step === 'incoming') {
+    const incomingCategoryLabel = elderHelpOptions.find((item) => item.id === incomingConversation?.category)?.label;
     return (
       <PhoneShell screenKey={step} language={language} bottomNavigation={volunteerBottomNavigation}>
-        <ScreenHeader title="Нет запросов" subtitle="Когда появится новое обращение, оно будет здесь." />
-        <div className="info-list">
-          <p>Сейчас новых обращений нет.</p>
-          <p>Вы онлайн и готовы помогать.</p>
-        </div>
+        <ScreenHeader
+          title={incomingConversation ? 'Новое обращение' : 'Нет запросов'}
+          subtitle={incomingConversation ? 'Пожилой пользователь хочет начать чат с вами.' : 'Когда появится новое обращение, оно будет здесь.'}
+        />
+        {incomingConversation ? (
+          <section className="incoming-request-card">
+            <span className="incoming-request-card__avatar" aria-hidden="true">{incomingConversation.elderName.slice(0, 1).toUpperCase()}</span>
+            <div>
+              <h2>{incomingConversation.elderName}</h2>
+              <p>Тема: {incomingCategoryLabel ?? 'Помощь'}</p>
+              <small>{new Date(incomingConversation.requestedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</small>
+            </div>
+            <ActionButton onClick={openIncomingConversation}>Принять и открыть чат</ActionButton>
+          </section>
+        ) : (
+          <div className="info-list">
+            <p>Сейчас новых обращений нет.</p>
+            <p>Вы онлайн и готовы помогать.</p>
+          </div>
+        )}
         <ActionButton tone="ghost" onClick={() => { setStep('volunteerHome'); navigate('/helper'); }}>{text.notNow}</ActionButton>
       </PhoneShell>
     );
@@ -1543,7 +1644,7 @@ function HistoryScreen({
 }: {
   language: Language;
   session?: HelpSession;
-  volunteer?: Volunteer;
+  volunteer?: { name: string };
   messages: ChatMessage[];
   bottomNavigation: ReactNode;
   onChat: () => void;
