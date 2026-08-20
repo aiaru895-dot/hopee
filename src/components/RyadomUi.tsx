@@ -49,7 +49,7 @@ export function PhoneShell({
             </button>
           ))}
         </div>
-        <div className={`screen-transition${screenKey === 'welcome' ? ' screen-transition--intro' : ''}`}>
+        <div className="screen-transition">
           {children}
         </div>
         {bottomNavigation}

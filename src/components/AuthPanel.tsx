@@ -70,10 +70,6 @@ export function AuthPanel({ language }: { language: Language }) {
 
   return (
     <PhoneShell screenKey="auth" language={language}>
-      <section className="app-intro" aria-hidden="true">
-        <img src="/app-icon.png" alt="" />
-        <strong>KÖMEK</strong>
-      </section>
       <header className="desktop-app-header">
         <strong><img className="brand-mark" src="/app-icon.png" alt="" aria-hidden="true" />KÖMEK</strong>
         <span>{text.service}</span>

@@ -77,10 +77,6 @@ button, input { font: inherit; }
   flex-direction: column;
   gap: 18px;
 }
-.screen-transition--intro {
-  animation: screen-enter 0.58s cubic-bezier(0.16, 1, 0.3, 1) both;
-  will-change: opacity, transform, filter;
-}
 .quick-language {
   position: absolute;
   top: 16px;
@@ -189,7 +185,6 @@ button, input { font: inherit; }
   gap: 12px;
   text-align: center;
   padding: 12px 0 6px;
-  animation: login-reveal 0.7s ease-out 1.35s both;
 }
 .auth-layout,
 .auth-card,
@@ -231,7 +226,6 @@ button, input { font: inherit; }
 .brand-symbol--hero {
   width: 112px;
   height: 112px;
-  animation: brand-float 3.4s ease-in-out infinite;
 }
 .welcome-screen {
   min-height: calc(100dvh - 48px);
@@ -295,31 +289,6 @@ button, input { font: inherit; }
   height: 28px;
   border-radius: 8px;
   object-fit: contain;
-}
-
-.app-intro {
-  position: absolute;
-  inset: 0;
-  z-index: 5;
-  display: grid;
-  place-content: center;
-  justify-items: center;
-  gap: 14px;
-  background:
-    radial-gradient(circle at 50% 38%, rgba(255, 255, 255, 0.96), rgba(250, 238, 241, 0.96) 56%, rgba(250, 248, 247, 0.98));
-  animation: intro-away 0.72s ease-in 1.25s both;
-}
-.app-intro img {
-  width: 152px;
-  height: 152px;
-  border-radius: 34px;
-  animation: intro-icon 1.22s cubic-bezier(0.2, 0.9, 0.2, 1) both;
-}
-.app-intro strong {
-  color: var(--ink);
-  font-size: 34px;
-  font-weight: 800;
-  animation: intro-text 0.8s ease-out 0.28s both;
 }
 
 .home-panel {
@@ -2006,51 +1975,6 @@ input {
   50% { transform: translateY(-5px); opacity: 0.9; }
 }
 
-@keyframes brand-float {
-  0%, 100% { transform: translateY(0) scale(1); filter: drop-shadow(0 8px 16px rgba(184, 92, 120, 0.10)); }
-  50% { transform: translateY(-7px) scale(1.035); filter: drop-shadow(0 16px 22px rgba(184, 92, 120, 0.18)); }
-}
-
-@keyframes intro-icon {
-  0% { transform: translateY(18px) scale(0.78); opacity: 0; filter: blur(8px); }
-  58% { transform: translateY(0) scale(1.06); opacity: 1; filter: blur(0); }
-  100% { transform: translateY(0) scale(1); opacity: 1; filter: blur(0); }
-}
-
-@keyframes intro-text {
-  0% { transform: translateY(8px); opacity: 0; }
-  100% { transform: translateY(0); opacity: 1; }
-}
-
-@keyframes intro-away {
-  0% { opacity: 1; transform: scale(1); }
-  99% { opacity: 0; transform: scale(1.035); }
-  100% { opacity: 0; transform: scale(1.035); visibility: hidden; pointer-events: none; }
-}
-
-@keyframes login-reveal {
-  0% { opacity: 0; transform: translateY(12px); }
-  100% { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes screen-enter {
-  from {
-    opacity: 0;
-    transform: translateY(22px) scale(0.985);
-    filter: blur(10px);
-  }
-  62% {
-    opacity: 1;
-    transform: translateY(-2px) scale(1.002);
-    filter: blur(0);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-    filter: blur(0);
-  }
-}
-
 @keyframes praise-pop {
   from { opacity: 0; transform: translateY(-8px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
@@ -2113,7 +2037,6 @@ input {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .screen-transition--intro,
   .role-person,
   .role-heart,
   .role-hero__ground,

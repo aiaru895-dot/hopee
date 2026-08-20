@@ -906,7 +906,7 @@ export function HomePage() {
   const elderBottomNavigation = <MobileBottomNav role="elder" onSelect={selectElderTab} />;
   const volunteerBottomNavigation = <MobileBottomNav role="volunteer" onSelect={selectVolunteerTab} />;
 
-  if (!authReady) return <LoadingScreen title={text.searchEyebrow} language={language} />;
+  if (!authReady) return <StartupScreen language={language} />;
 
   if (!session && !welcomeSeen) {
     return (
@@ -1006,7 +1006,7 @@ export function HomePage() {
     );
   }
 
-  if (step === 'loading') return <LoadingScreen title={text.searchEyebrow} language={language} />;
+  if (step === 'loading') return <StartupScreen language={language} />;
 
   if (step === 'category') {
     return (
@@ -1461,12 +1461,12 @@ export function HomePage() {
   return null;
 }
 
-function LoadingScreen({ title, language }: { title: string; language: Language }) {
+function StartupScreen({ language }: { language: Language }) {
   return (
     <PhoneShell screenKey="loading" language={language}>
       <section className="center-screen">
-        <div className="search-indicator" aria-hidden="true"><span /></div>
-        <h1>{title}</h1>
+        <img className="brand-symbol" src="/app-icon.png" alt="" aria-hidden="true" />
+        <h1>KÖMEK</h1>
       </section>
     </PhoneShell>
   );
