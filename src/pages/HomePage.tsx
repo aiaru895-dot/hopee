@@ -1,6 +1,7 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import type { ReactNode } from 'react';
+import { ArrowLeftIcon } from '@heroicons/react/24/solid';
 import { useLocation } from 'wouter';
 import { AuthPanel } from '../components/AuthPanel';
 import { MobileBottomNav, type NavigationTab } from '../components/MobileBottomNav';
@@ -234,12 +235,14 @@ function stepForTabRoute(path: string, routeRole: Role): Step | null {
         '/elder/history': 'history',
         '/elder/rules': 'safetyGuide',
         '/elder/profile': 'admin',
+        '/elder/settings': 'safety',
       }
     : {
         '/helper': 'volunteerHome',
         '/helper/requests': 'incoming',
         '/helper/chats': 'chat',
         '/helper/profile': 'admin',
+        '/helper/settings': 'safety',
       };
   return routes[normalizedPath] ?? null;
 }
@@ -1035,7 +1038,7 @@ export function HomePage() {
       <PhoneShell screenKey={step} language={language} bottomNavigation={elderBottomNavigation}>
         <header className="home-app-header">
           <strong><img className="brand-mark" src="/app-icon.png" alt="" aria-hidden="true" />KÖMEK</strong>
-          <button onClick={() => { setStep('admin'); navigate('/elder/profile'); }} aria-label={text.settings}>
+          <button onClick={() => { setStep('safety'); navigate('/elder/settings'); }} aria-label={text.settings}>
             <span aria-hidden="true">⚙</span>
             {text.settings}
           </button>
@@ -1171,10 +1174,13 @@ export function HomePage() {
         bottomNavigation={isVolunteerChat ? volunteerBottomNavigation : elderBottomNavigation}
       >
         <header className={`chat-header${isAiChat ? ' chat-header--ai' : ''}`}>
-          <button className="back-button" onClick={() => {
+          <button className="back-button" aria-label={text.back} onClick={() => {
             setStep(isVolunteerChat ? 'volunteerHome' : 'elderHome');
             navigate(isVolunteerChat ? '/helper' : '/elder');
-          }}>{text.back}</button>
+          }}>
+            <ArrowLeftIcon className="back-button__icon" aria-hidden="true" />
+            <span className="back-button__label">{text.back}</span>
+          </button>
           <div>
             <h1>{isAiChat ? 'Помощник KÖMEK' : isVolunteerChat ? partnerName : `${partnerName} K.`}</h1>
             <p>{isAiChat ? 'Чем вам помочь?' : isVolunteerChat ? 'Пожилой пользователь пишет вам' : `${text.verifiedHelper}. Сейчас помогает вам.`}</p>
@@ -1457,7 +1463,7 @@ export function HomePage() {
               <button onClick={() => { setStep('history'); navigate('/helper/chats'); }}>История</button>
               <button onClick={() => setStep('volunteerProfile')}>Достижения</button>
               <button onClick={() => { setStep('admin'); navigate('/helper/profile'); }}>Профиль</button>
-              <button onClick={() => setStep('safety')}>Настройки</button>
+              <button onClick={() => { setStep('safety'); navigate('/helper/settings'); }}>Настройки</button>
             </nav>
             <div className="volunteer-online">
               <span>Вы онлайн</span>
@@ -1550,6 +1556,7 @@ export function HomePage() {
         onSoundChange={setSoundEnabled}
         onSoundVolumeChange={setSoundVolume}
         onLanguageChange={setLanguage}
+        onSignOut={signOutApp}
         bottomNavigation={role === 'elder' ? elderBottomNavigation : volunteerBottomNavigation}
         onBack={() => {
           setStep(role === 'elder' ? 'elderHome' : 'volunteerHome');
@@ -1733,6 +1740,7 @@ function InfoScreen({
   onSoundChange,
   onSoundVolumeChange,
   onLanguageChange,
+  onSignOut,
   bottomNavigation,
   onBack,
 }: {
@@ -1750,6 +1758,7 @@ function InfoScreen({
   onSoundChange: (enabled: boolean) => void;
   onSoundVolumeChange: (volume: number) => void;
   onLanguageChange: (language: Language) => void;
+  onSignOut: () => void;
   bottomNavigation: ReactNode;
   onBack: () => void;
 }) {
@@ -1758,7 +1767,7 @@ function InfoScreen({
   const profileName = cleanDisplayName(profile?.name, profile?.role);
   return (
     <PhoneShell screenKey={step} language={language} bottomNavigation={bottomNavigation}>
-      <ScreenHeader title={title} subtitle={profile ? `${profileName} · ${profile.city ?? ''}` : undefined} />
+      <ScreenHeader title={title} subtitle={step !== 'safety' && profile ? `${profileName} · ${profile.city ?? ''}` : undefined} />
       <div className="info-list">
         {step === 'safety' ? <p>{uiText[language].safetyNote}</p> : null}
         {step === 'admin' ? <p>{uiText[language].profile}: {profile?.role === 'elder' ? uiText[language].needHelp : uiText[language].wantHelp}</p> : null}
@@ -1835,6 +1844,9 @@ function InfoScreen({
           return <p key={item.id}><b>{item.name}</b><br />{unlocked ? uiText[language].done : uiText[language].noActivity}</p>;
         }) : null}
       </div>
+      {step === 'safety' ? (
+        <ActionButton tone="danger" onClick={onSignOut}>{uiText[language].signOut}</ActionButton>
+      ) : null}
       <ActionButton onClick={onBack}>{uiText[language].back}</ActionButton>
     </PhoneShell>
   );

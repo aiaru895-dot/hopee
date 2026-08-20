@@ -869,6 +869,15 @@ button, input { font: inherit; }
 }
 .back-button {
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+.back-button__icon {
+  width: 20px;
+  height: 20px;
 }
 .chat-header h1 {
   margin: 0;
@@ -2123,6 +2132,58 @@ input {
     gap: 10px;
     overflow: hidden;
   }
+  .screen-transition {
+    gap: 14px;
+  }
+  .stack {
+    gap: 10px;
+  }
+  .action-button,
+  .submit-button {
+    min-height: 52px;
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 17px;
+  }
+  .tile-button {
+    min-height: 76px;
+    border-radius: 12px;
+    padding: 12px;
+  }
+  .tile-button strong {
+    font-size: 17px;
+  }
+  .elder-action-list {
+    gap: 12px;
+  }
+  .home-action-card,
+  .home-action-card--primary {
+    min-height: 94px;
+    grid-template-columns: 58px minmax(0, 1fr) 20px;
+    gap: 12px;
+    border-radius: 18px;
+    padding: 14px;
+  }
+  .home-action-card--primary {
+    min-height: 102px;
+  }
+  .home-action-card__icon {
+    width: 58px;
+    height: 58px;
+    font-size: 27px;
+  }
+  .home-action-card__text {
+    gap: 4px;
+  }
+  .home-action-card__text strong {
+    font-size: 22px;
+  }
+  .home-action-card__text small {
+    font-size: 16px;
+  }
+  .home-action-card__chevron {
+    font-size: 34px;
+  }
   .elder-trust-image {
     width: min(100%, 280px);
     margin-bottom: 10px;
@@ -2244,8 +2305,24 @@ input {
     font-size: 14px;
   }
   .phone-shell--chat .back-button {
-    min-width: 52px;
-    padding: 0 10px;
+    width: 48px;
+    min-width: 48px;
+    height: 48px;
+    min-height: 48px;
+    border-radius: 50%;
+    padding: 0;
+  }
+  .phone-shell--chat .back-button__icon {
+    width: 24px;
+    height: 24px;
+  }
+  .phone-shell--chat .back-button__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
   .phone-shell--chat .chat-list {
     min-height: 0;
