@@ -8,20 +8,6 @@ type ActionButtonProps = {
   disabled?: boolean;
 };
 
-const languageLabels: Record<Language, string> = {
-  ru: 'RU',
-  kk: 'ҚAZ',
-  en: 'EN',
-};
-
-function changeLanguage(language: Language) {
-  window.dispatchEvent(new CustomEvent<Language>('komek-language-change', { detail: language }));
-}
-
-function signOut() {
-  window.dispatchEvent(new CustomEvent('komek-sign-out'));
-}
-
 export function PhoneShell({
   children,
   screenKey = 'static',
@@ -33,22 +19,9 @@ export function PhoneShell({
   language?: Language;
   bottomNavigation?: ReactNode;
 }) {
-  const showExit = !['welcome', 'auth', 'setup', 'loading'].includes(screenKey);
   return (
     <main className="app-shell">
       <section className={`phone-shell phone-shell--${screenKey}${bottomNavigation ? ' phone-shell--with-bottom-nav' : ''}`}>
-        {showExit ? (
-          <button className="quick-exit" onClick={signOut} aria-label={uiText[language].exit} title={uiText[language].exit}>
-            ←
-          </button>
-        ) : null}
-        <div className="quick-language" role="group" aria-label={uiText[language].language}>
-          {(['ru', 'kk', 'en'] as const).map((item) => (
-            <button key={item} className={language === item ? 'active' : ''} onClick={() => changeLanguage(item)}>
-              {languageLabels[item]}
-            </button>
-          ))}
-        </div>
         <div className="screen-transition">
           {children}
         </div>

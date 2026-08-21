@@ -3,6 +3,8 @@ import type { Session } from '@supabase/supabase-js';
 import type { ReactNode } from 'react';
 import {
   ArrowLeftIcon,
+  Cog6ToothIcon,
+  LanguageIcon,
   MicrophoneIcon,
   PaperAirplaneIcon,
   PhotoIcon,
@@ -13,6 +15,7 @@ import { useLocation } from 'wouter';
 import { AuthPanel } from '../components/AuthPanel';
 import { MobileBottomNav, type NavigationTab } from '../components/MobileBottomNav';
 import { ActionButton, PhoneShell, ScreenHeader, TileButton } from '../components/RyadomUi';
+import { SignOutConfirmDialog } from '../components/SignOutConfirmDialog';
 import { VolunteerCard } from '../components/VolunteerCard';
 import { analyzeChatSafety, type AiSafetyResult } from '../lib/aiSafety';
 import { achievements } from '../lib/ryadomData';
@@ -33,7 +36,7 @@ import { createSupabaseHelpSession, findOnlineVolunteer, saveChatMessage, saveHe
 import { loadChatMessages, loadLatestVolunteerConversation, watchChatMessages, watchVolunteerConversations, type VolunteerConversation } from '../lib/ryadomRealtime';
 import { supabase } from '../lib/supabase';
 import type { Language } from '../lib/i18n';
-import { languageNames, uiText } from '../lib/i18n';
+import { uiText } from '../lib/i18n';
 import { cleanDisplayName } from '../lib/displayText';
 import type { Achievement, ChatMessage, HelpCategory, HelpSession, ReportReason, Role, Volunteer } from '../lib/ryadomTypes';
 
@@ -300,10 +303,7 @@ export function HomePage() {
   const [fontMode, setFontMode] = useState<FontMode>(() => (localStorage.getItem('komek-font') === 'large' ? 'large' : 'normal'));
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('komek-sound') !== 'off');
   const [soundVolume, setSoundVolume] = useState(() => Number(localStorage.getItem('komek-volume') ?? '70'));
-  const [language, setLanguage] = useState<Language>(() => {
-    const savedLanguage = localStorage.getItem('komek-language');
-    return savedLanguage === 'kk' || savedLanguage === 'en' ? savedLanguage : 'ru';
-  });
+  const language: Language = 'ru';
   const searchTimerRef = useRef<number | undefined>(undefined);
   const searchSoundRef = useRef<{ context: AudioContext; timer: number } | null>(null);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
@@ -335,17 +335,6 @@ export function HomePage() {
       setAuthReady(true);
     });
     return () => data.subscription.unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    const handleLanguageChange = (event: Event) => {
-      const nextLanguage = (event as CustomEvent<Language>).detail;
-      if (nextLanguage === 'ru' || nextLanguage === 'kk' || nextLanguage === 'en') {
-        setLanguage(nextLanguage);
-      }
-    };
-    window.addEventListener('komek-language-change', handleLanguageChange);
-    return () => window.removeEventListener('komek-language-change', handleLanguageChange);
   }, []);
 
   useEffect(() => {
@@ -469,9 +458,9 @@ export function HomePage() {
   }, [soundVolume]);
 
   useEffect(() => {
-    document.documentElement.lang = language;
-    localStorage.setItem('komek-language', language);
-  }, [language]);
+    document.documentElement.lang = 'ru';
+    localStorage.setItem('komek-language', 'ru');
+  }, []);
 
   useEffect(() => {
     if (step === 'loading' || step === 'databaseSetup') return;
@@ -612,7 +601,7 @@ export function HomePage() {
     if (!('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(answer);
-    utterance.lang = language === 'kk' ? 'kk-KZ' : language === 'en' ? 'en-US' : 'ru-RU';
+    utterance.lang = 'ru-RU';
     utterance.rate = 0.92;
     utterance.onstart = () => {
       setIsAiSpeaking(true);
@@ -801,7 +790,7 @@ export function HomePage() {
       return;
     }
     const recognition = new SpeechRecognitionClass();
-    recognition.lang = language === 'kk' ? 'kk-KZ' : language === 'en' ? 'en-US' : 'ru-RU';
+    recognition.lang = 'ru-RU';
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.onresult = (event) => {
@@ -950,11 +939,6 @@ export function HomePage() {
     navigate('/');
     await supabase.auth.signOut();
   };
-
-  useEffect(() => {
-    window.addEventListener('komek-sign-out', signOutApp);
-    return () => window.removeEventListener('komek-sign-out', signOutApp);
-  }, [signOutApp]);
 
   const selectElderTab = (tab: NavigationTab) => {
     if (tab === 'chat') {
@@ -1514,7 +1498,18 @@ export function HomePage() {
                 <p className="eyebrow">Панель волонтёра</p>
                 <h1>{profileName}</h1>
               </div>
-              <button onClick={() => { setStep('admin'); navigate('/helper/profile'); }}>Профиль</button>
+              <div className="volunteer-topline__actions">
+                <button className="volunteer-profile-button" onClick={() => { setStep('admin'); navigate('/helper/profile'); }}>Профиль</button>
+                <button
+                  className="volunteer-settings-button"
+                  aria-label="Настройки"
+                  title="Настройки"
+                  onClick={() => { setStep('safety'); navigate('/helper/settings'); }}
+                >
+                  <Cog6ToothIcon aria-hidden="true" />
+                  <span>Настройки</span>
+                </button>
+              </div>
             </header>
             {firstActionPraise ? <div className="praise-banner">{firstActionPraise}</div> : null}
             <section className="volunteer-requests">
@@ -1593,7 +1588,6 @@ export function HomePage() {
         onFontChange={setFontMode}
         onSoundChange={setSoundEnabled}
         onSoundVolumeChange={setSoundVolume}
-        onLanguageChange={setLanguage}
         onSignOut={signOutApp}
         bottomNavigation={role === 'elder' ? elderBottomNavigation : volunteerBottomNavigation}
         onBack={() => {
@@ -1777,7 +1771,6 @@ function InfoScreen({
   onFontChange,
   onSoundChange,
   onSoundVolumeChange,
-  onLanguageChange,
   onSignOut,
   bottomNavigation,
   onBack,
@@ -1795,11 +1788,11 @@ function InfoScreen({
   onFontChange: (font: FontMode) => void;
   onSoundChange: (enabled: boolean) => void;
   onSoundVolumeChange: (volume: number) => void;
-  onLanguageChange: (language: Language) => void;
   onSignOut: () => void;
   bottomNavigation: ReactNode;
   onBack: () => void;
 }) {
+  const [isSignOutConfirmationOpen, setSignOutConfirmationOpen] = useState(false);
   const title = step === 'admin' ? uiText[language].profile : step === 'volunteerProfile' ? uiText[language].progress : uiText[language].settings;
   const reports = getSafetyReports();
   const profileName = cleanDisplayName(profile?.name, profile?.role);
@@ -1866,12 +1859,9 @@ function InfoScreen({
         {step === 'safety' ? (
           <div className="settings-group">
             <strong>{uiText[language].language}</strong>
-            <div className="language-toggle" role="group" aria-label={uiText[language].language}>
-              {(['ru', 'kk', 'en'] as const).map((item) => (
-                <button key={item} className={language === item ? 'active' : ''} onClick={() => onLanguageChange(item)}>
-                  {languageNames[item]}
-                </button>
-              ))}
+            <div className="language-current" aria-label="Язык приложения: Русский">
+              <LanguageIcon className="language-current__icon" aria-hidden="true" />
+              <span>Русский</span>
             </div>
           </div>
         ) : null}
@@ -1883,9 +1873,17 @@ function InfoScreen({
         }) : null}
       </div>
       {step === 'safety' ? (
-        <ActionButton tone="danger" onClick={onSignOut}>{uiText[language].signOut}</ActionButton>
+        <ActionButton tone="danger" onClick={() => setSignOutConfirmationOpen(true)}>Выйти из аккаунта</ActionButton>
       ) : null}
       <ActionButton onClick={onBack}>{uiText[language].back}</ActionButton>
+      <SignOutConfirmDialog
+        isOpen={isSignOutConfirmationOpen}
+        onCancel={() => setSignOutConfirmationOpen(false)}
+        onConfirm={() => {
+          setSignOutConfirmationOpen(false);
+          onSignOut();
+        }}
+      />
     </PhoneShell>
   );
 }

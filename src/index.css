@@ -71,59 +71,10 @@ button, input { font: inherit; }
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  padding-top: 38px;
   display: flex;
   flex: 1;
   flex-direction: column;
   gap: 18px;
-}
-.quick-language {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  z-index: 20;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 10px 22px rgba(39, 35, 38, 0.08);
-  backdrop-filter: blur(12px);
-}
-.quick-language button {
-  min-width: 42px;
-  min-height: 32px;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 800;
-  cursor: pointer;
-}
-.quick-language button.active {
-  background: var(--primary);
-  color: #fff;
-}
-.quick-exit {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  z-index: 20;
-  width: 42px;
-  height: 42px;
-  border: 1px solid var(--line);
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.92);
-  color: var(--ink);
-  font-size: 24px;
-  font-weight: 850;
-  line-height: 1;
-  cursor: pointer;
-  box-shadow: 0 10px 22px rgba(39, 35, 38, 0.08);
-  backdrop-filter: blur(12px);
 }
 .top-bar {
   display: flex;
@@ -638,8 +589,7 @@ button, input { font: inherit; }
 .report-options button:hover,
 .rating-scale button:hover,
 .bottom-nav button:hover,
-.theme-toggle button:hover,
-.language-toggle button:hover {
+.theme-toggle button:hover {
   transform: translateY(-2px);
   box-shadow: 0 16px 34px rgba(39, 35, 38, 0.14);
   filter: brightness(1.02);
@@ -655,8 +605,7 @@ button, input { font: inherit; }
 .report-options button:active,
 .rating-scale button:active,
 .bottom-nav button:active,
-.theme-toggle button:active,
-.language-toggle button:active {
+.theme-toggle button:active {
   transform: translateY(1px) scale(0.99);
   box-shadow: 0 8px 18px rgba(39, 35, 38, 0.10);
 }
@@ -1602,6 +1551,22 @@ input {
   justify-content: space-between;
   gap: 12px;
 }
+.volunteer-topline__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.volunteer-topline .volunteer-settings-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.volunteer-settings-button svg {
+  width: 21px;
+  height: 21px;
+  flex: 0 0 auto;
+}
 .volunteer-topline h1,
 .volunteer-profile-panel h2,
 .volunteer-requests h2,
@@ -1725,17 +1690,12 @@ input {
   color: var(--ink);
   font-size: 18px;
 }
-.theme-toggle,
-.language-toggle {
+.theme-toggle {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
-.language-toggle {
-  grid-template-columns: repeat(3, 1fr);
-}
-.theme-toggle button,
-.language-toggle button {
+.theme-toggle button {
   min-height: 52px;
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -1747,12 +1707,29 @@ input {
   transform: translateY(0);
   transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease;
 }
-.theme-toggle button.active,
-.language-toggle button.active {
+.theme-toggle button.active {
   border-color: var(--primary);
   background: var(--accent-soft);
   color: var(--primary-dark);
   box-shadow: 0 10px 24px rgba(184, 92, 120, 0.13);
+}
+.language-current {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 14px;
+  background: var(--card);
+  color: var(--ink);
+  font-weight: 800;
+  box-shadow: 0 8px 18px rgba(39, 35, 38, 0.06);
+}
+.language-current__icon {
+  width: 26px;
+  height: 26px;
+  color: var(--primary);
 }
 .volume-control {
   display: grid;
@@ -1876,17 +1853,6 @@ input {
 
 :root[data-theme="dark"] .phone-shell {
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.32);
-}
-
-:root[data-theme="dark"] .quick-language {
-  background: rgba(42, 36, 40, 0.92);
-  border-color: var(--line);
-}
-
-:root[data-theme="dark"] .quick-exit {
-  background: rgba(42, 36, 40, 0.92);
-  border-color: var(--line);
-  color: var(--ink);
 }
 
 :root[data-theme="dark"] .chat-header,
@@ -2017,8 +1983,7 @@ input {
   color: #8f8389;
 }
 
-:root[data-theme="dark"] .theme-toggle button.active,
-:root[data-theme="dark"] .language-toggle button.active {
+:root[data-theme="dark"] .theme-toggle button.active {
   background: var(--accent-soft);
   color: var(--primary-dark);
 }
@@ -2103,6 +2068,89 @@ input {
 @keyframes hero-glow {
   0%, 100% { transform: scale(0.98); opacity: 0.78; }
   50% { transform: scale(1.04); opacity: 1; }
+}
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(24, 19, 22, 0.62);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+.confirm-dialog {
+  width: min(100%, 440px);
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 28px;
+  background: var(--card);
+  color: var(--ink);
+  text-align: center;
+  box-shadow: 0 28px 70px rgba(24, 19, 22, 0.28);
+}
+.confirm-dialog__close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.confirm-dialog__close svg {
+  width: 24px;
+  height: 24px;
+}
+.confirm-dialog__icon {
+  width: 54px;
+  height: 54px;
+  color: var(--danger);
+}
+.confirm-dialog h2 {
+  margin: 0;
+  font-size: 26px;
+}
+.confirm-dialog p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.5;
+}
+.confirm-dialog__actions {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 6px;
+}
+.confirm-dialog__actions button {
+  min-height: 50px;
+  border-radius: 8px;
+  padding: 0 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.confirm-dialog__cancel {
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+}
+.confirm-dialog__confirm {
+  border: 1px solid var(--danger);
+  background: var(--danger);
+  color: #fff;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2281,8 +2329,27 @@ input {
   .volunteer-topline h1 {
     font-size: 23px;
   }
-  .volunteer-topline button {
+  .volunteer-topline .volunteer-profile-button {
     display: none;
+  }
+  .volunteer-topline .volunteer-settings-button {
+    width: 48px;
+    min-width: 48px;
+    min-height: 48px;
+    display: grid;
+    place-items: center;
+    border-radius: 14px;
+    padding: 0;
+    background: var(--accent-soft);
+    color: var(--primary-dark);
+  }
+  .volunteer-settings-button span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
   .volunteer-requests {
     display: grid;
@@ -2526,8 +2593,7 @@ input {
   .secondary-actions button,
   .choice-help button,
   .chat-tools button,
-  .theme-toggle button,
-  .language-toggle button {
+  .theme-toggle button {
     background: #fff;
     border: 2px solid #d8c8cf;
     color: var(--ink);
@@ -2566,12 +2632,10 @@ input {
   .settings-group strong {
     font-size: 16px;
   }
-  .theme-toggle,
-  .language-toggle {
+  .theme-toggle {
     gap: 6px;
   }
   .theme-toggle button,
-  .language-toggle button,
   .safety-actions button,
   .report-options button {
     min-height: 48px;
@@ -2656,7 +2720,6 @@ input {
   :root[data-theme="dark"] .choice-help button,
   :root[data-theme="dark"] .chat-tools button,
   :root[data-theme="dark"] .theme-toggle button,
-  :root[data-theme="dark"] .language-toggle button,
   :root[data-theme="dark"] .bottom-nav,
   :root[data-theme="dark"] .chat-input {
     background: #2a2327;
@@ -2814,16 +2877,6 @@ input {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-  .phone-shell--with-bottom-nav .quick-exit {
-    top: auto;
-    right: auto;
-    bottom: 42px;
-    left: 46px;
-  }
-  .phone-shell--with-bottom-nav .quick-language {
-    top: 26px;
-    right: 34px;
   }
   .ad-slot {
     display: none;
