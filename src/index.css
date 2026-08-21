@@ -2101,9 +2101,10 @@ input {
     background: #f3edf0;
   }
   .phone-shell {
+    --mobile-tab-bar-height: 66px;
     min-height: 100vh;
     min-height: 100dvh;
-    padding: 16px;
+    padding: 18px;
     overflow: hidden;
     background: linear-gradient(180deg, #fff 0%, #fbf4f7 100%);
   }
@@ -2133,56 +2134,102 @@ input {
     overflow: hidden;
   }
   .screen-transition {
-    gap: 14px;
+    gap: 18px;
   }
   .stack {
-    gap: 10px;
+    gap: 14px;
   }
   .action-button,
   .submit-button {
-    min-height: 52px;
+    min-height: 48px;
     border-radius: 12px;
-    padding: 12px 14px;
-    font-size: 17px;
+    padding: 10px 13px;
+    font-size: 16px;
   }
   .tile-button {
-    min-height: 76px;
+    min-height: 68px;
     border-radius: 12px;
-    padding: 12px;
+    padding: 10px;
   }
   .tile-button strong {
-    font-size: 17px;
+    font-size: 16px;
   }
   .elder-action-list {
-    gap: 12px;
+    gap: 14px;
   }
   .home-action-card,
   .home-action-card--primary {
-    min-height: 94px;
-    grid-template-columns: 58px minmax(0, 1fr) 20px;
-    gap: 12px;
-    border-radius: 18px;
-    padding: 14px;
+    min-height: 84px;
+    grid-template-columns: 50px minmax(0, 1fr) 18px;
+    gap: 11px;
+    border-radius: 16px;
+    padding: 12px;
   }
   .home-action-card--primary {
-    min-height: 102px;
+    min-height: 90px;
   }
   .home-action-card__icon {
-    width: 58px;
-    height: 58px;
-    font-size: 27px;
+    width: 50px;
+    height: 50px;
+    font-size: 24px;
   }
   .home-action-card__text {
     gap: 4px;
   }
   .home-action-card__text strong {
-    font-size: 22px;
+    font-size: 18px;
   }
   .home-action-card__text small {
-    font-size: 16px;
+    font-size: 14px;
   }
   .home-action-card__chevron {
+    font-size: 28px;
+  }
+  .home-app-header strong {
+    gap: 8px;
+    font-size: 24px;
+  }
+  .home-app-header .brand-mark {
+    width: 40px;
+    height: 40px;
+    border-radius: 11px;
+  }
+  .home-app-header button {
+    flex: 0 0 48px;
+    width: 48px;
+    min-height: 48px;
+    border-radius: 14px;
+    justify-content: center;
+    padding: 0;
+    font-size: 0;
+  }
+  .home-app-header button span {
+    font-size: 19px;
+  }
+  .elder-home-hero h1 {
     font-size: 34px;
+    line-height: 1.08;
+  }
+  .elder-home-hero p {
+    margin-top: 10px;
+    font-size: 16px;
+  }
+  .home-safety-card {
+    grid-template-columns: 50px minmax(0, 1fr);
+    gap: 12px;
+    border-radius: 16px;
+    padding: 14px;
+  }
+  .home-safety-card span {
+    width: 50px;
+    height: 50px;
+    font-size: 24px;
+  }
+  .home-safety-card strong {
+    font-size: 18px;
+  }
+  .home-safety-card p {
+    font-size: 14px;
   }
   .elder-trust-image {
     width: min(100%, 280px);
@@ -2212,7 +2259,7 @@ input {
     grid-template-rows: auto auto auto minmax(0, 1fr);
   }
   .volunteer-topline h1 {
-    font-size: 26px;
+    font-size: 23px;
   }
   .volunteer-topline button {
     display: none;
@@ -2247,7 +2294,7 @@ input {
   }
   .bottom-nav button {
     min-width: 0;
-    min-height: 52px;
+    min-height: 48px;
     border: 0;
     border-radius: 12px;
     background: transparent;
@@ -2255,7 +2302,7 @@ input {
     padding: 4px 2px;
     color: #777176;
     display: grid;
-    grid-template-rows: 28px auto;
+    grid-template-rows: 26px auto;
     place-items: center;
     align-content: center;
     gap: 1px;
@@ -2270,8 +2317,8 @@ input {
     color: var(--primary);
   }
   .bottom-nav__icon {
-    width: 26px;
-    height: 26px;
+    width: 24px;
+    height: 24px;
     display: block;
   }
   .bottom-nav__label {
@@ -2294,15 +2341,15 @@ input {
     font-size: 12px;
   }
   .phone-shell--chat .chat-header {
-    min-height: 74px;
-    padding: 10px;
-    border-radius: 18px;
+    min-height: 68px;
+    padding: 9px;
+    border-radius: 16px;
   }
   .phone-shell--chat .chat-header h1 {
-    font-size: 24px;
+    font-size: 21px;
   }
   .phone-shell--chat .chat-header p {
-    font-size: 14px;
+    font-size: 13px;
   }
   .phone-shell--chat .back-button {
     width: 48px;
@@ -2328,8 +2375,8 @@ input {
     min-height: 0;
     height: 100%;
     max-height: none;
-    padding: 14px;
-    border-radius: 18px;
+    padding: 12px;
+    border-radius: 16px;
     overscroll-behavior-y: contain;
     -webkit-overflow-scrolling: touch;
   }
@@ -2344,45 +2391,55 @@ input {
   }
   .phone-shell--chat .message {
     max-width: 84%;
-    padding: 10px 12px;
+    padding: 9px 11px;
   }
   .phone-shell--chat .message p {
-    font-size: 17px;
+    font-size: 15px;
   }
   .phone-shell--chat .voice-status {
     flex: 0 0 auto;
     min-height: 48px;
-    padding: 10px 14px;
-    font-size: 16px;
+    padding: 9px 12px;
+    font-size: 14px;
   }
   .screen-header h1,
   .home-panel h1,
   .center-screen h1 {
-    font-size: 30px;
+    font-size: 27px;
   }
-  .role-hero { min-height: 220px; }
-  .role-hero__art { width: min(100%, 340px); }
+  .screen-header p,
+  .center-screen p,
+  .volunteer-card p,
+  .info-list p,
+  .home-panel p,
+  .trust-note p,
+  .status-card p {
+    font-size: 16px;
+    line-height: 1.48;
+  }
+  .role-hero { min-height: 196px; }
+  .role-hero__art { width: min(100%, 310px); }
   .grid { grid-template-columns: 1fr; }
   .name-grid { grid-template-columns: 1fr; }
   .chat-input {
     flex: 0 0 auto;
     position: relative;
     z-index: 2;
-    grid-template-columns: minmax(0, 1fr) 52px 52px;
+    grid-template-columns: minmax(0, 1fr) 48px 48px;
     gap: 6px;
     border: 2px solid #d8c8cf;
     border-radius: 28px;
-    padding: 7px;
+    padding: 6px;
     background: #fff;
     box-shadow: 0 14px 34px rgba(39, 35, 38, 0.14);
   }
   .chat-input input {
-    min-height: 44px;
-    font-size: 16px;
+    min-height: 42px;
+    font-size: 15px;
   }
   .chat-input button {
-    min-width: 52px;
-    min-height: 52px;
+    min-width: 48px;
+    min-height: 48px;
     padding: 0;
     font-size: 0;
     box-shadow: 0 8px 18px rgba(39, 35, 38, 0.18);
@@ -2416,7 +2473,7 @@ input {
     order: 3;
   }
   .chat-input--ai {
-    grid-template-columns: minmax(0, 1fr) 58px;
+    grid-template-columns: minmax(0, 1fr) 50px;
   }
   .chat-input--ai button {
     font-size: 24px;
@@ -2430,9 +2487,9 @@ input {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .chat-tools button {
-    min-height: 46px;
-    border-radius: 16px;
-    font-size: 15px;
+    min-height: 48px;
+    border-radius: 14px;
+    font-size: 14px;
   }
   .top-bar button,
   .secondary-actions button,
@@ -2466,6 +2523,75 @@ input {
   .form-card {
     border: 2px solid #ded0d6;
     box-shadow: 0 14px 34px rgba(39, 35, 38, 0.1);
+  }
+  .info-list {
+    display: grid;
+    gap: 18px;
+    padding: 14px;
+  }
+  .settings-group {
+    gap: 8px;
+  }
+  .settings-group strong {
+    font-size: 16px;
+  }
+  .theme-toggle,
+  .language-toggle {
+    gap: 6px;
+  }
+  .theme-toggle button,
+  .language-toggle button,
+  .safety-actions button,
+  .report-options button {
+    min-height: 48px;
+    padding-inline: 10px;
+    font-size: 14px;
+  }
+  .volume-control {
+    gap: 10px;
+    padding: 12px;
+  }
+  input {
+    min-height: 50px;
+    padding: 10px 12px;
+    font-size: 16px;
+  }
+  .safety-guide {
+    gap: 12px;
+  }
+  .safety-guide article {
+    border-radius: 14px;
+    padding: 14px;
+  }
+  .safety-guide h2 {
+    font-size: 19px;
+  }
+  .safety-guide p {
+    font-size: 15px;
+  }
+  .volunteer-card {
+    gap: 12px;
+  }
+  .volunteer-card h2 {
+    font-size: 22px;
+  }
+  .avatar {
+    width: 58px;
+    height: 58px;
+    font-size: 23px;
+  }
+  .incoming-request-card {
+    grid-template-columns: 54px minmax(0, 1fr);
+    gap: 12px;
+    padding: 16px;
+  }
+  .incoming-request-card__avatar {
+    width: 54px;
+    height: 54px;
+    font-size: 23px;
+  }
+  .incoming-request-card h2 {
+    font-size: 20px;
   }
   .welcome-points {
     grid-template-columns: 1fr;
