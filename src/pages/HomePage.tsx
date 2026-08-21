@@ -1,7 +1,14 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import type { ReactNode } from 'react';
-import { ArrowLeftIcon } from '@heroicons/react/24/solid';
+import {
+  ArrowLeftIcon,
+  MicrophoneIcon,
+  PaperAirplaneIcon,
+  PhotoIcon,
+  StopIcon,
+  VideoCameraIcon,
+} from '@heroicons/react/24/solid';
 import { useLocation } from 'wouter';
 import { AuthPanel } from '../components/AuthPanel';
 import { MobileBottomNav, type NavigationTab } from '../components/MobileBottomNav';
@@ -1181,7 +1188,7 @@ export function HomePage() {
             <ArrowLeftIcon className="back-button__icon" aria-hidden="true" />
             <span className="back-button__label">{text.back}</span>
           </button>
-          <div>
+          <div className="chat-header__identity">
             <h1>{isAiChat ? 'Помощник KÖMEK' : isVolunteerChat ? partnerName : `${partnerName} K.`}</h1>
             <p>{isAiChat ? 'Чем вам помочь?' : isVolunteerChat ? 'Пожилой пользователь пишет вам' : `${text.verifiedHelper}. Сейчас помогает вам.`}</p>
           </div>
@@ -1282,13 +1289,44 @@ export function HomePage() {
             disabled={blockedChat || isAiThinking}
             onClick={isAiChat && draft.trim() ? sendText : toggleVoiceRecording}
           >
-            {isAiChat && draft.trim() ? '↑' : isRecordingVoice ? '■' : '🎙'}
+            {isAiChat && draft.trim() ? (
+              <PaperAirplaneIcon className="chat-control-icon" aria-hidden="true" />
+            ) : isRecordingVoice ? (
+              <StopIcon className="chat-control-icon" aria-hidden="true" />
+            ) : (
+              <MicrophoneIcon className="chat-control-icon" aria-hidden="true" />
+            )}
           </button>
-          {!isAiChat ? <button disabled={blockedChat || isAiThinking} onClick={sendText}>{isAiThinking ? 'Ждём' : text.send}</button> : null}
+          {!isAiChat ? (
+            <button
+              aria-label={isAiThinking ? 'Ждём' : text.send}
+              disabled={blockedChat || isAiThinking}
+              onClick={sendText}
+            >
+              <PaperAirplaneIcon className="chat-control-icon" aria-hidden="true" />
+              <span className="chat-control-label">{isAiThinking ? 'Ждём' : text.send}</span>
+            </button>
+          ) : null}
         </div>
         {!isAiChat ? <div className="chat-tools">
-          <button disabled={blockedChat} onClick={() => photoInputRef.current?.click()}>Прикрепить фото</button>
-          <button disabled={blockedChat} onClick={() => videoInputRef.current?.click()}>{text.video}</button>
+          <button
+            aria-label="Прикрепить фото"
+            title="Прикрепить фото"
+            disabled={blockedChat}
+            onClick={() => photoInputRef.current?.click()}
+          >
+            <PhotoIcon className="chat-tool-icon" aria-hidden="true" />
+            <span>Прикрепить фото</span>
+          </button>
+          <button
+            aria-label={text.video}
+            title={text.video}
+            disabled={blockedChat}
+            onClick={() => videoInputRef.current?.click()}
+          >
+            <VideoCameraIcon className="chat-tool-icon" aria-hidden="true" />
+            <span>{text.video}</span>
+          </button>
           <input
             ref={photoInputRef}
             className="file-input"

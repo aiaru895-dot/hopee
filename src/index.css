@@ -889,6 +889,10 @@ button, input { font: inherit; }
   color: var(--muted);
   font-size: 16px;
 }
+.chat-header__identity {
+  flex: 1 1 auto;
+  min-width: 0;
+}
 .chat-header--ai {
   justify-content: flex-start;
   border: 0;
@@ -1131,6 +1135,19 @@ button, input { font: inherit; }
   background: #fff;
   color: var(--muted);
   font-weight: 760;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.chat-tool-icon,
+.chat-control-icon {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+}
+.chat-control-label {
+  margin-left: 6px;
 }
 .voice-status {
   border: 1px solid var(--accent-line);
@@ -1207,6 +1224,9 @@ button, input { font: inherit; }
   min-height: 48px;
   padding: 0 18px;
   font-weight: 760;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   transition: transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.24s ease, box-shadow 0.24s ease;
 }
 .chat-input .voice-round-button {
@@ -2344,12 +2364,23 @@ input {
     min-height: 68px;
     padding: 9px;
     border-radius: 16px;
+    justify-content: flex-start;
+  }
+  .phone-shell--chat .chat-header__identity {
+    overflow: hidden;
+    text-align: left;
   }
   .phone-shell--chat .chat-header h1 {
     font-size: 21px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .phone-shell--chat .chat-header p {
     font-size: 13px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .phone-shell--chat .back-button {
     width: 48px;
@@ -2442,29 +2473,13 @@ input {
     min-height: 48px;
     padding: 0;
     font-size: 0;
+    display: grid;
+    place-items: center;
     box-shadow: 0 8px 18px rgba(39, 35, 38, 0.18);
   }
-  .chat-input button::before {
-    content: '';
-    width: 13px;
-    height: 13px;
-    border-top: 3px solid currentColor;
-    border-right: 3px solid currentColor;
-    transform: rotate(-45deg) translateY(2px);
-  }
-  .chat-input .voice-round-button::before {
-    content: '';
-    width: 15px;
-    height: 15px;
-    border-radius: 999px;
-    background: currentColor;
-  }
-  .chat-input .voice-round-button[data-recording="true"]::before {
-    content: '';
-    width: 15px;
-    height: 15px;
-    border-radius: 4px;
-    background: currentColor;
+  .chat-input .chat-control-icon {
+    width: 23px;
+    height: 23px;
   }
   .chat-input .voice-round-button {
     order: 2;
@@ -2475,21 +2490,37 @@ input {
   .chat-input--ai {
     grid-template-columns: minmax(0, 1fr) 50px;
   }
-  .chat-input--ai button {
-    font-size: 24px;
-  }
-  .chat-input--ai button::before,
-  .chat-input--ai .voice-round-button::before,
-  .chat-input--ai .voice-round-button[data-recording="true"]::before {
-    content: none;
+  .chat-control-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
   .chat-tools {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    justify-content: center;
+    gap: 12px;
   }
   .chat-tools button {
-    min-height: 48px;
-    border-radius: 14px;
-    font-size: 14px;
+    width: 52px;
+    min-width: 52px;
+    min-height: 52px;
+    border-radius: 50%;
+    padding: 0;
+  }
+  .chat-tools button span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .chat-tools .chat-tool-icon {
+    width: 25px;
+    height: 25px;
   }
   .top-bar button,
   .secondary-actions button,
